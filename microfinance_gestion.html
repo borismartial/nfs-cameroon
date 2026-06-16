@@ -240,34 +240,104 @@ tr:hover td{background:#F8FAFC;}
 
 <script>
 // ── GAS SYNC ──────────────────────────────────────────────────
+// ── GOOGLE APPS SCRIPT SYNC ───────────────────────────────────
 const GAS_URL = "https://script.google.com/macros/s/AKfycby_SNFYilTrCjyCAP-q-EF1C-TjdyniXpCvU07N6UD3RR4Y6zqfxq16OYQo3lZjKxZN/exec";
-const ADMIN_PIN = "0000"; // PIN admin par défaut — à changer
 
-async function gasGet(table){
-  try{
-    const r=await fetch(GAS_URL+"?action=get&table="+table+"&t="+Date.now());
-    if(!r.ok) return null;
-    const j=await r.json();
-    return j.ok?(j.data||[]):null;
-  }catch(e){return null;}
+// GET via JSONP (contourne CORS)
+function gasGet(table) {
+  return new Promise((resolve) => {
+    const cbName = 'cb_' + Date.now();
+    const script = document.createElement('script');
+    const timer  = setTimeout(() => {
+      delete window[cbName];
+      try { document.body.removeChild(script); } catch(e) {}
+      resolve(null);
+    }, 15000);
+    window[cbName] = (data) => {
+      clearTimeout(timer);
+      delete window[cbName];
+      try { document.body.removeChild(script); } catch(e) {}
+      resolve(data && data.ok ? (data.data || []) : null);
+    };
+    script.src = GAS_URL + '?action=get&table=' + table + '&callback=' + cbName + '&t=' + Date.now();
+    script.onerror = () => { clearTimeout(timer); resolve(null); };
+    document.body.appendChild(script);
+  });
 }
-async function gasPost(body){
-  try{ await fetch(GAS_URL,{method:"POST",body:JSON.stringify(body)}); }catch(e){}
+
+// POST via fetch no-cors
+async function gasPost(body) {
+  try {
+    await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(body) });
+  } catch(e) {}
 }
-function gasPush(table,row){ gasPost({action:"upsert",table,row}).catch(()=>{}); }
-async function gasUpsertMany(table,rows){ if(rows&&rows.length) await gasPost({action:"upsertMany",table,rows}); }
-async function gasPull(table,lsKey){
-  const remote=await gasGet(table);
-  if(!remote||!Array.isArray(remote)) return false;
-  if(!remote.length) return true;
-  const pk=table==="nfs_demandes"?"ref":"id";
-  const local=JSON.parse(localStorage.getItem(lsKey)||"[]");
-  const map={};
-  local.forEach(r=>{if(r[pk])map[r[pk]]=r;});
-  remote.forEach(r=>{if(r[pk])map[r[pk]]=r;});
-  localStorage.setItem(lsKey,JSON.stringify(Object.values(map)));
+
+function gasPush(table, row) { gasPost({ action: 'upsert', table, row }).catch(() => {}); }
+
+async function gasUpsertMany(table, rows) {
+  if (!rows || !rows.length) return;
+  await gasPost({ action: 'upsertMany', table, rows });
+}
+
+async function gasPull(table, lsKey) {
+  const remote = await gasGet(table);
+  if (!remote || !Array.isArray(remote)) return false;
+  if (!remote.length) return true;
+  const pk = table === 'nfs_demandes' ? 'ref' : 'id';
+  const local = JSON.parse(localStorage.getItem(lsKey) || '[]');
+  const map = {};
+  local.forEach(r => { if (r[pk]) map[r[pk]] = r; });
+  remote.forEach(r => { if (r[pk]) map[r[pk]] = r; });
+  localStorage.setItem(lsKey, JSON.stringify(Object.values(map)));
   return true;
 }
+
+async function gasUploadFile(inputId, fileName, subfolder) {
+  const input = document.getElementById(inputId);
+  if (!input || !input.files || !input.files[0]) return null;
+  const file = input.files[0];
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        let fileData = e.target.result;
+        if (file.type.startsWith('image/')) {
+          fileData = await compressImage(fileData, 800, 0.7);
+        }
+        await fetch(GAS_URL, {
+          method: 'POST', mode: 'no-cors',
+          body: JSON.stringify({
+            action: 'uploadFile',
+            fileName: fileName || file.name,
+            fileData: fileData,
+            mimeType: file.type || 'image/jpeg',
+            subfolder: subfolder || ''
+          })
+        });
+        resolve('uploaded');
+      } catch(err) { resolve(null); }
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+}
+
+function compressImage(dataUrl, maxWidth, quality) {
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let w = img.width, h = img.height;
+      if (w > maxWidth) { h = Math.round(h * maxWidth / w); w = maxWidth; }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
 
 // ── STATE ────────────────────────────────────────────────────
 const S={membres:[],transactions:[],credits:[],agences:[],demandes:[],currentOp:null,editId:null,pendingAction:null};
