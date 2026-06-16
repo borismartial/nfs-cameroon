@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NFS CAMEROON — Logiciel Admin</title>
+<style>
+:root{--navy:#0D2B6E;--blue:#1A56B0;--gold:#D4A017;--green:#16A34A;--red:#DC2626;--orange:#EA580C;--bg:#F0F4F8;--card:#fff;--border:#CBD5E1;--text:#1E293B;--muted:#64748B;}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',sans-serif;}
+body{background:var(--bg);color:var(--text);display:flex;height:100vh;overflow:hidden;}
+#sidebar{width:230px;background:var(--navy);color:#fff;display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;}
+.logo-box{padding:16px 14px;border-bottom:1px solid rgba(255,255,255,.1);}
+.logo-box h1{font-size:13px;font-weight:700;}
+.logo-box p{font-size:10px;color:rgba(255,255,255,.45);margin-top:2px;}
+.nav-sec{padding:10px 8px 3px;font-size:9px;color:rgba(255,255,255,.35);letter-spacing:1px;text-transform:uppercase;}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 14px;cursor:pointer;border-radius:6px;margin:1px 6px;font-size:12px;color:rgba(255,255,255,.75);transition:background .15s;}
+.nav-item:hover{background:rgba(255,255,255,.08);}
+.nav-item.active{background:var(--blue);color:#fff;}
+.nav-badge{margin-left:auto;background:var(--red);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:700;}
+.sidebar-footer{margin-top:auto;padding:12px;border-top:1px solid rgba(255,255,255,.1);font-size:10px;color:rgba(255,255,255,.35);}
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+#topbar{background:#fff;border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+#topbar h2{font-size:14px;font-weight:600;color:var(--navy);}
+#content{flex:1;overflow-y:auto;padding:20px;}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px;}
+.kpi{background:#fff;border-radius:10px;padding:14px;border:1px solid var(--border);}
+.kpi .lbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+.kpi .val{font-size:19px;font-weight:700;margin:3px 0;color:var(--navy);}
+.kpi .sub{font-size:10px;color:var(--green);}
+.card{background:#fff;border-radius:10px;border:1px solid var(--border);margin-bottom:16px;}
+.card-hd{padding:11px 15px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.card-hd h3{font-size:13px;font-weight:600;color:var(--navy);}
+.card-bd{padding:15px;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+th{background:#F8FAFC;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.4px;padding:8px 11px;text-align:left;border-bottom:1px solid var(--border);}
+td{padding:8px 11px;border-bottom:1px solid #F1F5F9;vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:#F8FAFC;}
+.fg{display:flex;flex-direction:column;gap:4px;margin-bottom:11px;}
+.fg label{font-size:11px;font-weight:600;color:var(--muted);}
+.fi{padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;outline:none;background:#fff;width:100%;}
+.fi:focus{border-color:var(--blue);}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px;}
+.full{grid-column:1/-1;}
+.btn{padding:7px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:none;}
+.btn:hover{opacity:.88;}
+.btn-p{background:var(--blue);color:#fff;}
+.btn-s{background:var(--green);color:#fff;}
+.btn-d{background:var(--red);color:#fff;}
+.btn-g{background:var(--gold);color:#fff;}
+.btn-o{background:transparent;border:1px solid var(--border);color:var(--text);}
+.btn-sm{padding:4px 9px;font-size:11px;}
+.btn-w{background:var(--orange);color:#fff;}
+.st{padding:2px 8px;border-radius:20px;font-size:10px;font-weight:600;}
+.st-actif{background:#DCFCE7;color:var(--green);}
+.st-inactif{background:#F1F5F9;color:var(--muted);}
+.st-suspendu{background:#FEF9C3;color:#CA8A04;}
+.st-attente{background:#DBEAFE;color:#1D4ED8;}
+.st-approuve{background:#DCFCE7;color:var(--green);}
+.st-rejete{background:#FEE2E2;color:var(--red);}
+.st-encours{background:#DBEAFE;color:#1D4ED8;}
+.st-solde{background:#DCFCE7;color:var(--green);}
+.st-en_attente{background:#FEF9C3;color:#CA8A04;}
+.acc-pill{padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;}
+.acc-cc{background:#DBEAFE;color:#1D4ED8;}
+.acc-ep{background:#DCFCE7;color:var(--green);}
+.modal-ov{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:1000;}
+.modal-ov.open{display:flex;}
+.modal{background:#fff;border-radius:12px;width:520px;max-width:96vw;max-height:90vh;display:flex;flex-direction:column;}
+.modal-hd{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-hd h3{font-size:13px;font-weight:700;color:var(--navy);}
+.modal-close{font-size:18px;cursor:pointer;color:var(--muted);background:none;border:none;}
+.modal-bd{padding:18px;overflow-y:auto;flex:1;}
+.modal-ft{padding:11px 18px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;}
+.badge{background:var(--blue);color:#fff;padding:2px 8px;border-radius:20px;font-size:10px;}
+.empty{text-align:center;padding:36px;color:var(--muted);font-size:13px;}
+.sr{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid #F1F5F9;}
+.sr:last-child{border-bottom:none;}
+#toast{position:fixed;bottom:18px;right:18px;background:#1E293B;color:#fff;padding:10px 16px;border-radius:8px;font-size:12px;z-index:9999;transform:translateY(60px);opacity:0;transition:all .3s;}
+#toast.show{transform:translateY(0);opacity:1;}
+#toast.ok{background:var(--green);}
+#toast.err{background:var(--red);}
+.tab-bar{display:flex;gap:2px;margin-bottom:16px;border-bottom:1px solid var(--border);}
+.tab{padding:7px 14px;font-size:12px;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;}
+.tab.active{color:var(--blue);border-color:var(--blue);font-weight:600;}
+.tab-c{display:none;}
+.tab-c.active{display:block;}
+.sync-dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;background:var(--red);}
+.sync-dot.ok{background:var(--green);}
+.text-g{color:var(--green);}
+.text-r{color:var(--red);}
+.fw7{font-weight:700;}
+.fs11{font-size:11px;}
+.progress-bar{background:#E2E8F0;border-radius:10px;height:6px;overflow:hidden;margin:4px 0;}
+.progress-fill{height:100%;border-radius:10px;background:linear-gradient(90deg,var(--blue),var(--green));}
+.pin-modal{text-align:center;padding:10px 0;}
+.pin-input-row{display:flex;gap:10px;justify-content:center;margin:16px 0;}
+.pin-box{width:44px;height:54px;border:2px solid var(--border);border-radius:8px;font-size:22px;font-weight:700;text-align:center;outline:none;}
+.pin-box:focus{border-color:var(--blue);}
+</style>
+</head>
+<body>
+<nav id="sidebar">
+  <div class="logo-box" style="padding:10px 8px 6px;background:#fff;border-radius:0"><img src="data:image/png;base64,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" style="width:100%;height:auto;display:block"><p style="text-align:center;font-size:9px;color:var(--muted);margin-top:4px;padding-bottom:2px">Logiciel Admin — COOPEC</p></div>
+  <div class="nav-sec">Principal</div>
+  <div class="nav-item active" onclick="nav('dashboard')"><span>📊</span>Tableau de bord</div>
+  <div class="nav-item" onclick="nav('membres')"><span>👥</span>Membres</div>
+  <div class="nav-sec">Opérations</div>
+  <div class="nav-item" onclick="nav('depots')" id="nav-depots"><span>📥</span>Dépôts / Retraits<span class="nav-badge" id="badge-depots" style="display:none">0</span></div>
+  <div class="nav-item" onclick="nav('virements')"><span>↔️</span>Virements</div>
+  <div class="nav-item" onclick="nav('credits')"><span>💳</span>Crédits</div>
+  <div class="nav-sec">Administration</div>
+  <div class="nav-item" onclick="nav('demandes')" id="nav-demandes"><span>✍️</span>Demandes adhésion<span class="nav-badge" id="badge-demandes" style="display:none">0</span></div>
+  <div class="nav-item" onclick="nav('agences')"><span>🏢</span>Agences</div>
+  <div class="nav-item" onclick="nav('rapports')"><span>📈</span>Rapports</div>
+  <div class="sidebar-footer">
+    <div><span class="sync-dot" id="syncDot"></span><span id="syncLabel">Hors ligne</span></div>
+    <div id="syncTime" style="margin-top:2px"></div>
+    <div style="margin-top:3px">v4.0 — NFS © 2026</div>
+  </div>
+</nav>
+
+<div id="main">
+  <div id="topbar">
+    <h2 id="pageTitle">Tableau de bord</h2>
+    <div style="display:flex;align-items:center;gap:10px">
+      <span id="topDate" style="font-size:11px;color:var(--muted)"></span>
+      <button class="btn btn-p btn-sm" onclick="forcSync()">🔄 Sync</button>
+      <span class="badge">ADMIN</span>
+    </div>
+  </div>
+  <div id="content"></div>
+</div>
+
+<div id="toast"></div>
+
+<!-- MODAL PIN ADMIN -->
+<div id="mPin" class="modal-ov">
+  <div class="modal" style="width:340px">
+    <div class="modal-hd"><h3 id="mPinTitle">🔐 Confirmer votre PIN</h3><button class="modal-close" onclick="closeM('mPin')">✕</button></div>
+    <div class="modal-bd">
+      <div class="pin-modal">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:8px" id="mPinDesc">Entrez votre PIN administrateur pour valider l'opération</div>
+        <div class="pin-input-row">
+          <input class="pin-box" id="ap0" maxlength="1" type="password" oninput="pinNext(this,'ap1')">
+          <input class="pin-box" id="ap1" maxlength="1" type="password" oninput="pinNext(this,'ap2')" onkeydown="pinPrev(event,'ap0')">
+          <input class="pin-box" id="ap2" maxlength="1" type="password" oninput="pinNext(this,'ap3')" onkeydown="pinPrev(event,'ap1')">
+          <input class="pin-box" id="ap3" maxlength="1" type="password" onkeydown="pinPrev(event,'ap2')" oninput="pinDone()">
+        </div>
+        <div id="pinAdminErr" style="color:var(--red);font-size:12px;display:none">PIN incorrect</div>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn btn-o" onclick="closeM('mPin')">Annuler</button>
+      <button class="btn btn-p" onclick="validateAdminPin()">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL MEMBRE -->
+<div id="mMembre" class="modal-ov">
+  <div class="modal">
+    <div class="modal-hd"><h3 id="mMembreTitle">Nouveau membre</h3><button class="modal-close" onclick="closeM('mMembre')">✕</button></div>
+    <div class="modal-bd">
+      <div class="form-grid">
+        <div class="fg"><label>Nom *</label><input class="fi" id="m-nom" placeholder="Nom"></div>
+        <div class="fg"><label>Prénom *</label><input class="fi" id="m-prenom" placeholder="Prénom(s)"></div>
+        <div class="fg"><label>Téléphone *</label><input class="fi" id="m-tel" placeholder="+237 6XX XXX XXX"></div>
+        <div class="fg"><label>Email</label><input class="fi" id="m-email" type="email"></div>
+        <div class="fg"><label>CNI / Passeport</label><input class="fi" id="m-cni" placeholder="N° pièce"></div>
+        <div class="fg"><label>Date naissance</label><input class="fi" id="m-ddn" type="date"></div>
+        <div class="fg full"><label>Adresse</label><input class="fi" id="m-adresse" placeholder="Quartier, Ville"></div>
+        <div class="fg"><label>Profession</label><input class="fi" id="m-profession"></div>
+        <div class="fg"><label>Agence</label><select class="fi" id="m-agence"></select></div>
+        <div class="fg"><label>PIN (4 chiffres) *</label><input class="fi" id="m-pin" type="password" maxlength="4" placeholder="PIN connexion app"></div>
+        <div class="fg"><label>Dépôt initial EP (FCFA)</label><input class="fi" id="m-initEP" type="number" min="0" placeholder="0"></div>
+        <div class="fg"><label>Dépôt initial CC (FCFA)</label><input class="fi" id="m-initCC" type="number" min="0" placeholder="0"></div>
+      </div>
+    </div>
+    <div class="modal-ft"><button class="btn btn-o" onclick="closeM('mMembre')">Annuler</button><button class="btn btn-p" onclick="saveMembre()">Enregistrer</button></div>
+  </div>
+</div>
+
+<!-- MODAL OPERATION -->
+<div id="mOp" class="modal-ov">
+  <div class="modal">
+    <div class="modal-hd"><h3 id="mOpTitle">Opération</h3><button class="modal-close" onclick="closeM('mOp')">✕</button></div>
+    <div class="modal-bd">
+      <div class="form-grid">
+        <div class="fg full"><label>Membre</label><select class="fi" id="op-m"></select></div>
+        <div class="fg"><label>Compte</label><select class="fi" id="op-c"><option value="EP">Épargne (EP)</option><option value="CC">Courant (CC)</option></select></div>
+        <div class="fg"><label>Montant (FCFA)</label><input class="fi" id="op-mt" type="number" min="1" placeholder="0"></div>
+        <div class="fg full"><label>Motif</label><input class="fi" id="op-mo" placeholder="Objet de l'opération"></div>
+      </div>
+    </div>
+    <div class="modal-ft"><button class="btn btn-o" onclick="closeM('mOp')">Annuler</button><button class="btn btn-s" id="opBtn" onclick="confirmOp()">Valider</button></div>
+  </div>
+</div>
+
+<!-- MODAL VIREMENT -->
+<div id="mVir" class="modal-ov">
+  <div class="modal">
+    <div class="modal-hd"><h3>Virement interne</h3><button class="modal-close" onclick="closeM('mVir')">✕</button></div>
+    <div class="modal-bd">
+      <div class="form-grid">
+        <div class="fg"><label>Émetteur</label><select class="fi" id="v-from"></select></div>
+        <div class="fg"><label>Compte source</label><select class="fi" id="v-fromC"><option value="CC">Courant (CC)</option><option value="EP">Épargne (EP)</option></select></div>
+        <div class="fg"><label>Bénéficiaire</label><select class="fi" id="v-to"></select></div>
+        <div class="fg"><label>Compte destination</label><select class="fi" id="v-toC"><option value="CC">Courant (CC)</option><option value="EP">Épargne (EP)</option></select></div>
+        <div class="fg"><label>Montant (FCFA)</label><input class="fi" id="v-mt" type="number" min="1" placeholder="0"></div>
+        <div class="fg"><label>Motif</label><input class="fi" id="v-mo" placeholder="Objet"></div>
+      </div>
+    </div>
+    <div class="modal-ft"><button class="btn btn-o" onclick="closeM('mVir')">Annuler</button><button class="btn btn-p" onclick="doVir()">Exécuter</button></div>
+  </div>
+</div>
+
+<!-- MODAL CREDIT -->
+<div id="mCr" class="modal-ov">
+  <div class="modal">
+    <div class="modal-hd"><h3>Nouveau dossier crédit</h3><button class="modal-close" onclick="closeM('mCr')">✕</button></div>
+    <div class="modal-bd">
+      <div class="form-grid">
+        <div class="fg full"><label>Membre</label><select class="fi" id="cr-m"></select></div>
+        <div class="fg"><label>Montant (FCFA)</label><input class="fi" id="cr-mt" type="number" min="1" oninput="simCr()"></div>
+        <div class="fg"><label>Durée (mois)</label><input class="fi" id="cr-du" type="number" min="1" max="60" value="12" oninput="simCr()"></div>
+        <div class="fg"><label>Taux mensuel (%)</label><input class="fi" id="cr-tx" type="number" step="0.1" value="2" oninput="simCr()"></div>
+        <div class="fg"><label>Objet</label><input class="fi" id="cr-ob" placeholder="Commerce, équipement..."></div>
+        <div class="fg"><label>Garantie</label><input class="fi" id="cr-ga" placeholder="Type de garantie"></div>
+        <div class="fg full" id="crPreview" style="display:none;background:#F0F9FF;border-radius:8px;padding:10px">
+          <div class="sr"><span style="font-size:12px;color:var(--muted)">Total à rembourser</span><span class="fw7 text-g" id="crT">—</span></div>
+          <div class="sr"><span style="font-size:12px;color:var(--muted)">Intérêts totaux</span><span class="fw7 text-r" id="crI">—</span></div>
+          <div class="sr"><span style="font-size:12px;color:var(--muted)">Mensualité</span><span class="fw7" id="crM">—</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-ft"><button class="btn btn-o" onclick="closeM('mCr')">Annuler</button><button class="btn btn-g" onclick="saveCr()">Soumettre</button></div>
+  </div>
+</div>
+
+<script>
+// ── GAS SYNC ──────────────────────────────────────────────────
+const GAS_URL = "https://script.google.com/macros/s/AKfycby_SNFYilTrCjyCAP-q-EF1C-TjdyniXpCvU07N6UD3RR4Y6zqfxq16OYQo3lZjKxZN/exec";
+const ADMIN_PIN = "0000"; // PIN admin par défaut — à changer
+
+async function gasGet(table){
+  try{
+    const r=await fetch(GAS_URL+"?action=get&table="+table+"&t="+Date.now());
+    if(!r.ok) return null;
+    const j=await r.json();
+    return j.ok?(j.data||[]):null;
+  }catch(e){return null;}
+}
+async function gasPost(body){
+  try{ await fetch(GAS_URL,{method:"POST",body:JSON.stringify(body)}); }catch(e){}
+}
+function gasPush(table,row){ gasPost({action:"upsert",table,row}).catch(()=>{}); }
+async function gasUpsertMany(table,rows){ if(rows&&rows.length) await gasPost({action:"upsertMany",table,rows}); }
+async function gasPull(table,lsKey){
+  const remote=await gasGet(table);
+  if(!remote||!Array.isArray(remote)) return false;
+  if(!remote.length) return true;
+  const pk=table==="nfs_demandes"?"ref":"id";
+  const local=JSON.parse(localStorage.getItem(lsKey)||"[]");
+  const map={};
+  local.forEach(r=>{if(r[pk])map[r[pk]]=r;});
+  remote.forEach(r=>{if(r[pk])map[r[pk]]=r;});
+  localStorage.setItem(lsKey,JSON.stringify(Object.values(map)));
+  return true;
+}
+
+// ── STATE ────────────────────────────────────────────────────
+const S={membres:[],transactions:[],credits:[],agences:[],demandes:[],currentOp:null,editId:null,pendingAction:null};
+const INACTIF_JOURS=90; // Inactif si aucune op depuis 90 jours
+
+function lsLoad(){
+  S.membres=JSON.parse(localStorage.getItem('nfs_membres')||'[]');
+  S.transactions=JSON.parse(localStorage.getItem('nfs_transactions')||'[]');
+  S.credits=JSON.parse(localStorage.getItem('nfs_credits')||'[]');
+  S.agences=JSON.parse(localStorage.getItem('nfs_agences')||'[]');
+  S.demandes=JSON.parse(localStorage.getItem('nfs_demandes')||'[]');
+  if(!S.agences.length){
+    S.agences=[{id:'AG01',nom:'Siège Douala Akwa',ville:'Douala'},{id:'AG02',nom:'Agence Bonanjo',ville:'Douala'}];
+    lsSave();
+  }
+  checkInactivite();
+}
+function lsSave(){
+  localStorage.setItem('nfs_membres',JSON.stringify(S.membres));
+  localStorage.setItem('nfs_transactions',JSON.stringify(S.transactions));
+  localStorage.setItem('nfs_credits',JSON.stringify(S.credits));
+  localStorage.setItem('nfs_agences',JSON.stringify(S.agences));
+  localStorage.setItem('nfs_demandes',JSON.stringify(S.demandes));
+}
+
+// ── INACTIVITÉ ───────────────────────────────────────────────
+function checkInactivite(){
+  const now=new Date();
+  S.membres.forEach(m=>{
+    if(m.statut==='radie') return;
+    const txs=S.transactions.filter(t=>t.membreId===m.id&&t.statut==='approuve');
+    if(!txs.length){
+      const adhesion=new Date(m.dateAdhesion||'2020-01-01');
+      const jours=Math.floor((now-adhesion)/86400000);
+      if(jours>INACTIF_JOURS) m.statut='inactif';
+    } else {
+      const lastTx=txs.map(t=>new Date(t.date)).sort((a,b)=>b-a)[0];
+      const jours=Math.floor((now-lastTx)/86400000);
+      m.statut=jours>INACTIF_JOURS?'inactif':'actif';
+    }
+  });
+}
+
+// ── SYNC ────────────────────────────────────────────────────
+let syncOk=false;
+function setSyncStatus(ok){
+  syncOk=ok;
+  document.getElementById('syncDot').className='sync-dot'+(ok?' ok':'');
+  document.getElementById('syncLabel').textContent=ok?'Cloud sync':'Hors ligne';
+  document.getElementById('syncTime').textContent='Sync: '+new Date().toLocaleTimeString('fr-FR');
+}
+async function pullAll(){
+  const results=await Promise.all([
+    gasPull('nfs_membres','nfs_membres'),
+    gasPull('nfs_transactions','nfs_transactions'),
+    gasPull('nfs_credits','nfs_credits'),
+    gasPull('nfs_demandes','nfs_demandes'),
+    gasPull('nfs_agences','nfs_agences'),
+  ]);
+  lsLoad();
+  return results.some(r=>r===true);
+}
+async function forcSync(){
+  toast('Synchronisation…');
+  await gasUpsertMany('nfs_membres',S.membres);
+  await gasUpsertMany('nfs_transactions',S.transactions);
+  await gasUpsertMany('nfs_credits',S.credits);
+  const ok=await pullAll();
+  setSyncStatus(ok);
+  toast(ok?'Sync réussie':'Hors ligne — données locales','ok');
+  refreshPage();
+}
+
+// ── UTILS ────────────────────────────────────────────────────
+function fmt(n){return Number(n||0).toLocaleString('fr-FR')+' FCFA';}
+function fmtN(n){return Number(n||0).toLocaleString('fr-FR');}
+function today(){return new Date().toLocaleDateString('fr-FR');}
+function isoDay(){return new Date().toISOString().slice(0,10);}
+function uid(p){return p+'-'+Date.now()+'-'+Math.random().toString(36).slice(2,4);}
+function nextId(pfx,list){
+  if(!list.length) return pfx+'-0000001';
+  const nums=list.map(x=>parseInt((x.id||'0').replace(/\D/g,'')));
+  return pfx+'-'+String(Math.max(...nums)+1).padStart(7,'0');
+}
+function toast(msg,type=''){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='show '+type;
+  setTimeout(()=>t.className='',3000);
+}
+function getMembre(id){return S.membres.find(m=>m.id===id);}
+function getNom(id){const m=getMembre(id);return m?m.nom+' '+m.prenom:id||'—';}
+function updateBadges(){
+  const dep=S.transactions.filter(t=>t.statut==='attente').length;
+  const dem=S.demandes.filter(d=>d.statut==='en_attente').length;
+  document.getElementById('badge-depots').textContent=dep;
+  document.getElementById('badge-depots').style.display=dep?'inline':'none';
+  document.getElementById('badge-demandes').textContent=dem;
+  document.getElementById('badge-demandes').style.display=dem?'inline':'none';
+}
+
+// ── PIN ADMIN ────────────────────────────────────────────────
+function pinNext(el,nextId){if(el.value.length===1){const n=document.getElementById(nextId);if(n)n.focus();}}
+function pinPrev(e,prevId){if(e.key==='Backspace'&&e.target.value===''){const p=document.getElementById(prevId);if(p){p.value='';p.focus();}}}
+function pinDone(){validateAdminPin();}
+function getAdminPinInput(){return ['ap0','ap1','ap2','ap3'].map(id=>document.getElementById(id).value).join('');}
+function clearPinInputs(){['ap0','ap1','ap2','ap3'].forEach(id=>document.getElementById(id).value='');document.getElementById('pinAdminErr').style.display='none';}
+
+function requireAdminPin(desc,action){
+  // PIN admin désactivé temporairement — exécution directe
+  if(typeof action==='function') action();
+}
+
+function validateAdminPin(){
+  const pin=getAdminPinInput();
+  const stored=localStorage.getItem('nfs_admin_pin')||ADMIN_PIN;
+  if(pin!==stored){
+    document.getElementById('pinAdminErr').style.display='block';
+    clearPinInputs();
+    document.getElementById('ap0').focus();
+    return;
+  }
+  closeM('mPin');
+  if(typeof S.pendingAction==='function') S.pendingAction();
+  S.pendingAction=null;
+}
+
+// ── NAVIGATION ───────────────────────────────────────────────
+const PAGE_TITLES={dashboard:'Tableau de bord',membres:'Membres',depots:'Dépôts & Retraits',
+  virements:'Virements',credits:'Crédits',demandes:"Demandes d'adhésion",agences:'Agences',rapports:'Rapports'};
+let currentPage='dashboard';
+function nav(page){
+  currentPage=page;
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.querySelector(`[onclick="nav('${page}')"]`).classList.add('active');
+  document.getElementById('pageTitle').textContent=PAGE_TITLES[page]||page;
+  ({dashboard:renderDash,membres:renderMembres,depots:renderDepots,virements:renderVirements,
+    credits:renderCredits,demandes:renderDemandes,agences:renderAgences,rapports:renderRapports})[page]?.();
+}
+function refreshPage(){nav(currentPage);}
+
+// ── DASHBOARD ────────────────────────────────────────────────
+function renderDash(){
+  updateBadges();
+  const totalEP=S.membres.reduce((s,m)=>s+(parseFloat(m.soldeEP)||0),0);
+  const totalCC=S.membres.reduce((s,m)=>s+(parseFloat(m.soldeCC)||0),0);
+  const crActifs=S.credits.filter(c=>c.statut==='encours');
+  const encours=crActifs.reduce((s,c)=>s+(parseFloat(c.montant)||0),0);
+  const enAttente=S.transactions.filter(t=>t.statut==='attente');
+  const demandesNv=S.demandes.filter(d=>d.statut==='en_attente');
+  document.getElementById('content').innerHTML=`
+  <div class="kpi-grid">
+    <div class="kpi"><div class="lbl">Membres actifs</div><div class="val">${fmtN(S.membres.filter(m=>m.statut==='actif').length)}</div><div class="sub">Total: ${S.membres.length}</div></div>
+    <div class="kpi"><div class="lbl">Épargne totale</div><div class="val" style="font-size:14px">${fmt(totalEP)}</div><div class="sub">Comptes EP</div></div>
+    <div class="kpi"><div class="lbl">Comptes courants</div><div class="val" style="font-size:14px">${fmt(totalCC)}</div><div class="sub">Soldes CC</div></div>
+    <div class="kpi"><div class="lbl">Encours crédits</div><div class="val" style="font-size:14px">${fmt(encours)}</div><div class="sub">${crActifs.length} actifs · ${S.credits.filter(c=>c.statut==='solde').length} soldés</div></div>
+  </div>
+  <!-- Mini rapport crédits dans dashboard -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-hd"><h3>💳 Portefeuille crédits</h3><button class="btn btn-p btn-sm" onclick="nav('rapports')">Rapport complet →</button></div>
+    <div class="card-bd" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+      <div style="text-align:center">
+        <div style="font-size:18px;font-weight:700;color:var(--blue)">${crActifs.length}</div>
+        <div style="font-size:10px;color:var(--muted)">En cours</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:18px;font-weight:700;color:var(--navy)">${fmt(encours)}</div>
+        <div style="font-size:10px;color:var(--muted)">Capital décaissé</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:18px;font-weight:700;color:var(--green)">${fmt(crActifs.reduce((s,c)=>s+(parseFloat(c.rembourse)||0),0))}</div>
+        <div style="font-size:10px;color:var(--muted)">Remboursé</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:18px;font-weight:700;color:var(--red)">${fmt(encours-crActifs.reduce((s,c)=>s+(parseFloat(c.rembourse)||0),0))}</div>
+        <div style="font-size:10px;color:var(--muted)">Restant dû</div>
+      </div>
+    </div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="card">
+      <div class="card-hd"><h3>⏳ Opérations en attente (${enAttente.length})</h3></div>
+      <div style="padding:0">
+        ${enAttente.length?enAttente.slice(0,8).map(t=>`
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-bottom:1px solid #F8FAFC">
+            <div>
+              <div style="font-size:12px;font-weight:600">${t.type} — ${fmt(t.montant)}</div>
+              <div class="fs11" style="color:var(--muted)">${getNom(t.membreId)} · <span class="acc-pill acc-${t.compte==='CC'?'cc':'ep'}">${t.compte}</span> · ${t.dateAff||t.date}</div>
+              ${t.recu&&t.recu.startsWith('http')?`<a href="${t.recu}" target="_blank" style="font-size:11px;color:var(--blue);font-weight:600">📎 Voir la preuve</a>`:''}
+            </div>
+            <div style="display:flex;gap:4px">
+              <button class="btn btn-s btn-sm" onclick="demanderApprob('${t.id}','approuver')">✓</button>
+              <button class="btn btn-d btn-sm" onclick="demanderApprob('${t.id}','rejeter')">✕</button>
+            </div>
+          </div>`).join(''):'<div class="empty">✅ Aucune opération en attente</div>'}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><h3>✍️ Demandes adhésion (${demandesNv.length})</h3></div>
+      <div style="padding:0">
+        ${demandesNv.length?demandesNv.slice(0,5).map(d=>`
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:9px 14px;border-bottom:1px solid #F8FAFC">
+            <div>
+              <div style="font-size:12px;font-weight:600">${d.nom} ${d.prenom}</div>
+              <div class="fs11" style="color:var(--muted)">${d.tel} · ${d.ref}</div>
+            </div>
+            <button class="btn btn-p btn-sm" onclick="nav('demandes')">Traiter →</button>
+          </div>`).join(''):'<div class="empty">Aucune demande</div>'}
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <div class="card-hd"><h3>Dernières transactions approuvées</h3></div>
+    <div style="padding:0">
+      <table>
+        <tr><th>Date</th><th>Membre</th><th>Type</th><th>Compte</th><th>Montant</th><th>Statut</th></tr>
+        ${S.transactions.filter(t=>t.statut==='approuve').slice(-8).reverse().map(t=>`<tr>
+          <td class="fs11">${t.dateAff||t.date}</td>
+          <td>${getNom(t.membreId)}</td>
+          <td style="font-size:10px;font-weight:600">${t.type}</td>
+          <td><span class="acc-pill acc-${t.compte==='CC'?'cc':'ep'}">${t.compte}</span></td>
+          <td class="fw7 ${t.type==='DEPOT'||t.type==='VIREMENT_IN'?'text-g':'text-r'}">${fmt(t.montant)}</td>
+          <td><span class="st st-approuve">approuvé</span></td>
+        </tr>`).join('')||'<tr><td colspan="6" class="empty">Aucune transaction</td></tr>'}
+      </table>
+    </div>
+  </div>`;
+}
+
+// ── APPROBATION AVEC PIN ─────────────────────────────────────
+function demanderApprob(txId,action){
+  const desc=action==='approuver'?`Approuver cette opération (PIN requis)`:`Rejeter cette opération (PIN requis)`;
+  requireAdminPin(desc,()=>{
+    if(action==='approuver') approuverTx(txId);
+    else rejeterTx(txId);
+  });
+}
+
+function approuverTx(id){
+  const tx=S.transactions.find(t=>t.id===id);
+  if(!tx) return;
+  const m=getMembre(tx.membreId);
+  if(!m) return;
+  if(tx.type==='DEPOT'){
+    if(tx.compte==='CC') m.soldeCC=(parseFloat(m.soldeCC)||0)+parseFloat(tx.montant);
+    else m.soldeEP=(parseFloat(m.soldeEP)||0)+parseFloat(tx.montant);
+  } else if(tx.type==='RETRAIT'){
+    const s=tx.compte==='CC'?(parseFloat(m.soldeCC)||0):(parseFloat(m.soldeEP)||0);
+    if(parseFloat(tx.montant)>s){toast('Solde insuffisant','err');return;}
+    if(tx.compte==='CC') m.soldeCC=s-parseFloat(tx.montant);
+    else m.soldeEP=s-parseFloat(tx.montant);
+  }
+  tx.statut='approuve';
+  m.statut='actif';
+  m.derniereOp=isoDay();
+  lsSave();
+  gasPush('nfs_membres',m);
+  gasPush('nfs_transactions',tx);
+  toast("Opération approuvée et compte mis à jour","ok");
+  renderDash();
+}
+
+function rejeterTx(id){
+  const tx=S.transactions.find(t=>t.id===id);
+  if(tx){tx.statut='rejete';lsSave();gasPush('nfs_transactions',tx);toast('Opération rejetée','err');renderDash();}
+}
+
+// ── MEMBRES ──────────────────────────────────────────────────
+function renderMembres(filter=''){
+  const list=filter?S.membres.filter(m=>(m.nom+m.prenom+m.tel+m.id).toLowerCase().includes(filter.toLowerCase())):S.membres;
+  document.getElementById('content').innerHTML=`
+  <div style="display:flex;gap:10px;margin-bottom:14px">
+    <input class="fi" id="srch" placeholder="🔍 Nom, téléphone, ID…" value="${filter}" oninput="renderMembres(this.value)" style="flex:1">
+    <button class="btn btn-p" onclick="openMembre()">+ Nouveau membre</button>
+  </div>
+  <div class="card">
+    <div class="card-hd"><h3>Membres (${list.length})</h3></div>
+    <div style="padding:0">
+      <table>
+        <tr><th>ID</th><th>Nom</th><th>Téléphone</th><th>Épargne</th><th>Courant</th><th>Statut</th><th>Inactivité</th><th>Actions</th></tr>
+        ${list.length?list.map(m=>{
+          const txs=S.transactions.filter(t=>t.membreId===m.id&&t.statut==='approuve');
+          const last=txs.length?txs.map(t=>t.date).sort().reverse()[0]:m.dateAdhesion;
+          const jours=last?Math.floor((new Date()-new Date(last))/86400000):999;
+          return `<tr>
+            <td class="fw7" style="color:var(--blue);font-size:11px">${m.id}</td>
+            <td>${m.nom} ${m.prenom}</td>
+            <td>${m.tel||'—'}</td>
+            <td class="fw7 text-g">${fmt(m.soldeEP)}</td>
+            <td class="fw7" style="color:var(--blue)">${fmt(m.soldeCC)}</td>
+            <td><span class="st st-${m.statut}">${m.statut}</span></td>
+            <td class="fs11 ${jours>INACTIF_JOURS?'text-r':''}">${jours} j</td>
+            <td><div style="display:flex;gap:3px">
+              <button class="btn btn-s btn-sm" onclick="openOp('DEPOT','${m.id}')">📥</button>
+              <button class="btn btn-w btn-sm" onclick="openOp('RETRAIT','${m.id}')">📤</button>
+              <button class="btn btn-p btn-sm" onclick="openMembre('${m.id}')">✏️</button>
+              <button class="btn btn-d btn-sm" onclick="supprimerMembre('${m.id}')">🗑️</button>
+            </div></td>
+          </tr>`;}).join(''):'<tr><td colspan="8" class="empty">Aucun membre</td></tr>'}
+      </table>
+    </div>
+  </div>`;
+}
+
+function supprimerMembre(id){
+  const m=getMembre(id);
+  if(!m) return;
+  requireAdminPin(`Supprimer définitivement ${m.nom} ${m.prenom} ?`,()=>{
+    if(!confirm(`CONFIRMER la suppression de ${m.nom} ${m.prenom} ?\nCette action est irréversible.`)) return;
+    S.membres=S.membres.filter(x=>x.id!==id);
+    lsSave();
+    gasPush('nfs_membres',{...m,statut:'radie',supprime:true});
+    toast('Membre supprimé','ok');
+    renderMembres();
+  });
+}
+
+function openMembre(id=null){
+  S.editId=id;
+  document.getElementById('mMembreTitle').textContent=id?'Modifier membre':'Nouveau membre';
+  ['m-nom','m-prenom','m-tel','m-email','m-cni','m-ddn','m-adresse','m-profession','m-pin','m-initEP','m-initCC'].forEach(f=>{const el=document.getElementById(f);if(el)el.value='';});
+  fillAgenceSelect('m-agence');
+  if(id){
+    const m=getMembre(id);
+    if(m){
+      document.getElementById('m-nom').value=m.nom||'';
+      document.getElementById('m-prenom').value=m.prenom||'';
+      document.getElementById('m-tel').value=m.tel||'';
+      document.getElementById('m-email').value=m.email||'';
+      document.getElementById('m-cni').value=m.cni||'';
+      document.getElementById('m-ddn').value=m.ddn||'';
+      document.getElementById('m-adresse').value=m.adresse||'';
+      document.getElementById('m-profession').value=m.profession||'';
+      document.getElementById('m-agence').value=m.agence||'';
+    }
+  }
+  openM('mMembre');
+}
+
+function saveMembre(){
+  const nom=document.getElementById('m-nom').value.trim();
+  const prenom=document.getElementById('m-prenom').value.trim();
+  const tel=document.getElementById('m-tel').value.trim();
+  const pin=String(document.getElementById('m-pin').value||'').trim();
+  if(!nom||!prenom) return toast('Nom et prénom obligatoires','err');
+  if(!S.editId&&!pin) return toast('PIN obligatoire pour un nouveau membre','err');
+  if(pin&&pin.length!==4) return toast('PIN doit avoir exactement 4 chiffres','err');
+  if(S.editId){
+    const idx=S.membres.findIndex(m=>m.id===S.editId);
+    if(idx>=0){
+      Object.assign(S.membres[idx],{nom,prenom,tel,
+        email:document.getElementById('m-email').value,
+        cni:document.getElementById('m-cni').value,
+        ddn:document.getElementById('m-ddn').value,
+        adresse:document.getElementById('m-adresse').value,
+        profession:document.getElementById('m-profession').value,
+        agence:document.getElementById('m-agence').value,
+        ...(pin?{pin}:{}),
+      });
+      lsSave();gasPush('nfs_membres',S.membres[idx]);toast("Membre mis à jour","ok");
+    }
+  } else {
+    const initEP=parseFloat(document.getElementById('m-initEP').value)||0;
+    const initCC=parseFloat(document.getElementById('m-initCC').value)||0;
+    const id=nextId('MBR',S.membres);
+    const m={id,ccId:'CC-'+id.slice(4),epId:'EP-'+id.slice(4),nom,prenom,tel,
+      email:document.getElementById('m-email').value,
+      cni:document.getElementById('m-cni').value,
+      ddn:document.getElementById('m-ddn').value,
+      adresse:document.getElementById('m-adresse').value,
+      profession:document.getElementById('m-profession').value,
+      agence:document.getElementById('m-agence').value,
+      pin:pin,pinAChanger:true,
+      soldeCC:initCC,soldeEP:initEP,statut:'actif',dateAdhesion:isoDay(),derniereOp:isoDay()};
+    S.membres.push(m);
+    if(initEP>0){const tx=addTx(id,'DEPOT',initEP,'EP','Dépôt initial épargne','approuve');gasPush('nfs_transactions',tx);}
+    if(initCC>0){const tx=addTx(id,'DEPOT',initCC,'CC','Dépôt initial courant','approuve');gasPush('nfs_transactions',tx);}
+    lsSave();gasPush('nfs_membres',m);toast('Membre '+id+' créé (PIN: '+pin+')','ok');
+  }
+  closeM('mMembre');renderMembres();
+}
+
+// ── OPERATIONS ───────────────────────────────────────────────
+function renderDepots(){
+  updateBadges();
+  const ops=S.transactions.filter(t=>t.type==='DEPOT'||t.type==='RETRAIT');
+  document.getElementById('content').innerHTML=`
+  <div style="display:flex;gap:10px;margin-bottom:14px">
+    <button class="btn btn-s" onclick="openOp('DEPOT')">📥 Dépôt</button>
+    <button class="btn btn-w" onclick="openOp('RETRAIT')">📤 Retrait</button>
+  </div>
+  <div class="tab-bar">
+    <div class="tab active" onclick="swTab('tEnAt','tHist',this)">En attente (${ops.filter(t=>t.statut==='attente').length})</div>
+    <div class="tab" onclick="swTab('tHist','tEnAt',this)">Historique</div>
+  </div>
+  <div id="tEnAt" class="tab-c active">
+    <div class="card"><div style="padding:0">
+      <table>
+        <tr><th>Date</th><th>Membre</th><th>Type</th><th>Compte</th><th>Montant</th><th>Motif</th><th>Actions</th></tr>
+        ${ops.filter(t=>t.statut==='attente').map(t=>`<tr>
+          <td class="fs11">${t.dateAff||t.date}</td>
+          <td>${getNom(t.membreId)}</td>
+          <td style="font-weight:700;color:${t.type==='DEPOT'?'var(--green)':'var(--red)'}">${t.type}</td>
+          <td><span class="acc-pill acc-${t.compte==='CC'?'cc':'ep'}">${t.compte}</span></td>
+          <td class="fw7">${fmt(t.montant)}</td>
+          <td class="fs11">${t.motif||'—'}</td>
+          <td><div style="display:flex;gap:4px">
+            <button class="btn btn-s btn-sm" onclick="demanderApprob('${t.id}','approuver')">✓ Approuver</button>
+            <button class="btn btn-d btn-sm" onclick="demanderApprob('${t.id}','rejeter')">✕ Rejeter</button>
+          </div></td>
+        </tr>`).join('')||'<tr><td colspan="7" class="empty">Aucune opération en attente</td></tr>'}
+      </table>
+    </div></div>
+  </div>
+  <div id="tHist" class="tab-c">
+    <div class="card"><div style="padding:0">
+      <table>
+        <tr><th>Date</th><th>Membre</th><th>Type</th><th>Compte</th><th>Montant</th><th>Motif</th><th>Statut</th></tr>
+        ${ops.filter(t=>t.statut!=='attente').slice().reverse().map(t=>`<tr>
+          <td class="fs11">${t.dateAff||t.date}</td>
+          <td>${getNom(t.membreId)}</td>
+          <td style="font-size:10px;font-weight:700">${t.type}</td>
+          <td><span class="acc-pill acc-${t.compte==='CC'?'cc':'ep'}">${t.compte}</span></td>
+          <td class="fw7 ${t.type==='DEPOT'?'text-g':'text-r'}">${fmt(t.montant)}</td>
+          <td class="fs11">${t.motif||'—'}${t.recu&&t.recu.startsWith('http')?` <a href="${t.recu}" target="_blank" style="color:var(--blue)">📎</a>`:''}</td>
+          <td><span class="st st-${t.statut}">${t.statut}</span></td>
+        </tr>`).join('')||'<tr><td colspan="7" class="empty">Aucune transaction</td></tr>'}
+      </table>
+    </div></div>
+  </div>`;
+}
+
+function openOp(type,membreId=null){
+  S.currentOp=type;
+  document.getElementById('mOpTitle').textContent=type==='DEPOT'?'📥 Dépôt':'📤 Retrait';
+  document.getElementById('opBtn').className='btn btn-sm '+(type==='DEPOT'?'btn-s':'btn-w');
+  fillMembreSelect('op-m');
+  if(membreId) setTimeout(()=>document.getElementById('op-m').value=membreId,50);
+  document.getElementById('op-mt').value='';
+  document.getElementById('op-mo').value='';
+  openM('mOp');
+}
+
+function confirmOp(){
+  const mId=document.getElementById('op-m').value;
+  const compte=document.getElementById('op-c').value;
+  const montant=parseFloat(document.getElementById('op-mt').value);
+  const motif=document.getElementById('op-mo').value;
+  if(!mId||!montant||montant<=0) return toast('Champs requis manquants','err');
+  // Créer en attente — approbation PIN requise
+  const tx=addTx(mId,S.currentOp,montant,compte,motif,'attente');
+  lsSave();gasPush('nfs_transactions',tx);
+  toast('Opération créée — approbation PIN requise','ok');
+  closeM('mOp');renderDepots();
+}
+
+function addTx(membreId,type,montant,compte,motif,statut='attente'){
+  const tx={id:uid('TX'),membreId,type,montant:parseFloat(montant),compte,motif,statut,date:isoDay(),dateAff:today()};
+  S.transactions.push(tx);
+  return tx;
+}
+
+// ── VIREMENTS ────────────────────────────────────────────────
+function renderVirements(){
+  const virs=S.transactions.filter(t=>t.type==='VIREMENT_OUT'||t.type==='VIREMENT_IN');
+  document.getElementById('content').innerHTML=`
+  <div style="margin-bottom:14px"><button class="btn btn-p" onclick="openVir()">↔️ Nouveau virement</button></div>
+  <div class="card"><div style="padding:0">
+    <table>
+      <tr><th>Date</th><th>Type</th><th>Membre</th><th>Compte</th><th>Montant</th><th>Motif</th></tr>
+      ${virs.slice().reverse().map(t=>`<tr>
+        <td class="fs11">${t.dateAff||t.date}</td>
+        <td style="font-size:10px;font-weight:700;color:${t.type==='VIREMENT_OUT'?'var(--red)':'var(--green)'}">${t.type==='VIREMENT_OUT'?'SORTANT':'ENTRANT'}</td>
+        <td>${getNom(t.membreId)}</td>
+        <td><span class="acc-pill acc-${t.compte==='CC'?'cc':'ep'}">${t.compte}</span></td>
+        <td class="fw7 ${t.type==='VIREMENT_OUT'?'text-r':'text-g'}">${fmt(t.montant)}</td>
+        <td class="fs11">${t.motif||'—'}</td>
+      </tr>`).join('')||'<tr><td colspan="6" class="empty">Aucun virement</td></tr>'}
+    </table>
+  </div></div>`;
+}
+
+function openVir(){fillMembreSelect('v-from');fillMembreSelect('v-to');document.getElementById('v-mt').value='';document.getElementById('v-mo').value='';openM('mVir');}
+
+function doVir(){
+  const fi=document.getElementById('v-from').value;
+  const ti=document.getElementById('v-to').value;
+  const fc=document.getElementById('v-fromC').value;
+  const tc=document.getElementById('v-toC').value;
+  const mt=parseFloat(document.getElementById('v-mt').value);
+  const mo=document.getElementById('v-mo').value;
+  if(!fi||!ti||!mt||mt<=0) return toast('Champs manquants','err');
+  if(fi===ti) return toast('Émetteur = bénéficiaire','err');
+  closeM('mVir');
+  requireAdminPin('Confirmer le virement (PIN requis)',()=>{
+    const from=getMembre(fi),to=getMembre(ti);
+    if(!from||!to) return toast('Membre introuvable','err');
+    const solde=fc==='CC'?(parseFloat(from.soldeCC)||0):(parseFloat(from.soldeEP)||0);
+    if(mt>solde) return toast('Solde '+fc+' insuffisant : '+fmt(solde),'err');
+    if(fc==='CC') from.soldeCC=(parseFloat(from.soldeCC)||0)-mt;
+    else from.soldeEP=(parseFloat(from.soldeEP)||0)-mt;
+    if(tc==='CC') to.soldeCC=(parseFloat(to.soldeCC)||0)+mt;
+    else to.soldeEP=(parseFloat(to.soldeEP)||0)+mt;
+    from.derniereOp=isoDay(); to.derniereOp=isoDay();
+    from.statut='actif'; to.statut='actif';
+    const tx1=addTx(fi,'VIREMENT_OUT',mt,fc,'Vers '+to.nom+' '+to.prenom+(mo?' — '+mo:''),'approuve');
+    const tx2=addTx(ti,'VIREMENT_IN',mt,tc,'De '+from.nom+' '+from.prenom+(mo?' — '+mo:''),'approuve');
+    lsSave();
+    gasPush('nfs_membres',from);gasPush('nfs_membres',to);
+    gasPush('nfs_transactions',tx1);gasPush('nfs_transactions',tx2);
+    toast("Virement de "+fmt(mt)+" exécuté","ok");
+    renderVirements();
+  });
+}
+
+// ── CREDITS ──────────────────────────────────────────────────
+function renderCredits(){
+  const crEnCours=S.credits.filter(c=>c.statut==='encours');
+  document.getElementById('content').innerHTML=`
+  <div class="tab-bar">
+    <div class="tab active" onclick="swTab('crL','crEnC',this)">Tous (${S.credits.length})</div>
+    <div class="tab" onclick="swTab('crEnC','crL',this)">Suivi en cours (${crEnCours.length})</div>
+  </div>
+  <div id="crL" class="tab-c active">
+    <div style="margin-bottom:12px"><button class="btn btn-g" onclick="openCr()">+ Nouveau dossier</button></div>
+    <div class="card"><div style="padding:0">
+      <table>
+        <tr><th>ID</th><th>Membre</th><th>Montant</th><th>Durée</th><th>Mensualité</th><th>Remboursé</th><th>Statut</th><th>Actions</th></tr>
+        ${S.credits.map(c=>{
+          const pct=c.mensualite&&c.duree?Math.min(100,Math.round((parseFloat(c.rembourse)||0)/(c.mensualite*c.duree)*100)):0;
+          return `<tr>
+            <td class="fw7 fs11" style="color:var(--gold)">${c.id}</td>
+            <td>${getNom(c.membreId)}</td>
+            <td class="fw7">${fmt(c.montant)}</td>
+            <td>${c.duree} mois</td>
+            <td style="color:var(--blue);font-weight:700">${fmt(c.mensualite)}</td>
+            <td>
+              <div style="font-size:11px">${fmt(c.rembourse||0)}</div>
+              <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+              <div class="fs11" style="color:var(--muted)">${pct}%</div>
+            </td>
+            <td><span class="st st-${c.statut}">${c.statut}</span></td>
+            <td><div style="display:flex;gap:3px">
+              ${c.statut==='attente'?`<button class="btn btn-s btn-sm" onclick="approuverCr('${c.id}')">Approuver</button><button class="btn btn-d btn-sm" onclick="rejeterCr('${c.id}')">Rejeter</button>`:''}
+              ${c.statut==='encours'?`<button class="btn btn-p btn-sm" onclick="rembourserCr('${c.id}')">Rembourser</button>`:''}
+            </div></td>
+          </tr>`;}).join('')||'<tr><td colspan="8" class="empty">Aucun crédit</td></tr>'}
+      </table>
+    </div></div>
+  </div>
+  <div id="crEnC" class="tab-c">
+    ${crEnCours.length?crEnCours.map(c=>{
+      const m=getMembre(c.membreId);
+      const pct=Math.min(100,Math.round((parseFloat(c.rembourse)||0)/(c.mensualite*c.duree)*100));
+      const restant=c.duree-Math.round((parseFloat(c.rembourse)||0)/c.mensualite);
+      return `<div class="card">
+        <div class="card-bd">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+            <div>
+              <div style="font-size:11px;font-weight:700;color:var(--gold)">${c.id}</div>
+              <div style="font-size:15px;font-weight:700">${m?m.nom+' '+m.prenom:'—'}</div>
+              <div class="fs11" style="color:var(--muted)">${c.objet||'—'} · Taux ${c.taux}%/mois</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:18px;font-weight:700;color:var(--navy)">${fmt(c.montant)}</div>
+              <div class="fs11" style="color:var(--muted)">Mensualité : ${fmt(c.mensualite)}</div>
+            </div>
+          </div>
+          <div class="progress-bar" style="height:10px"><div class="progress-fill" style="width:${pct}%"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-top:5px">
+            <span class="text-g fw7">${fmt(c.rembourse||0)} remboursé</span>
+            <span style="color:var(--muted)">${pct}% · ${restant>0?restant+' mensualités restantes':'Soldé'}</span>
+            <span class="text-r fw7">${fmt(c.montant*c.duree*c.taux/100-(parseFloat(c.rembourse)||0)+(c.montant-(parseFloat(c.rembourse)||0)))} restant</span>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:8px">
+            <button class="btn btn-p btn-sm" onclick="rembourserCr('${c.id}')">📥 Enregistrer remboursement</button>
+          </div>
+        </div>
+      </div>`;}).join(''):'<div class="empty">Aucun crédit en cours</div>'}
+  </div>`;
+}
+
+function openCr(){fillMembreSelect('cr-m');['cr-mt','cr-ob','cr-ga'].forEach(f=>document.getElementById(f).value='');document.getElementById('cr-du').value='12';document.getElementById('cr-tx').value='2';document.getElementById('crPreview').style.display='none';openM('mCr');}
+function simCr(){
+  const M=parseFloat(document.getElementById('cr-mt').value)||0;
+  const n=parseFloat(document.getElementById('cr-du').value)||0;
+  const r=parseFloat(document.getElementById('cr-tx').value)/100||0;
+  if(!M||!n||!r){document.getElementById('crPreview').style.display='none';return;}
+  const mens=M*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1);
+  const total=mens*n;
+  document.getElementById('crT').textContent=fmt(Math.round(total));
+  document.getElementById('crI').textContent=fmt(Math.round(total-M));
+  document.getElementById('crM').textContent=fmt(Math.round(mens));
+  document.getElementById('crPreview').style.display='block';
+}
+function saveCr(){
+  const mId=document.getElementById('cr-m').value;
+  const M=parseFloat(document.getElementById('cr-mt').value);
+  const n=parseInt(document.getElementById('cr-du').value);
+  const taux=parseFloat(document.getElementById('cr-tx').value);
+  if(!mId||!M||!n||!taux) return toast('Champs requis','err');
+  const r=taux/100;
+  const mens=Math.round(M*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1));
+  const cr={id:'CR-'+String(S.credits.length+1).padStart(7,'0'),membreId:mId,montant:M,duree:n,taux,mensualite:mens,objet:document.getElementById('cr-ob').value,garantie:document.getElementById('cr-ga').value,statut:'attente',date:isoDay(),rembourse:0};
+  S.credits.push(cr);lsSave();gasPush('nfs_credits',cr);
+  toast('Dossier '+cr.id+' soumis','ok');closeM('mCr');renderCredits();
+}
+function approuverCr(id){
+  requireAdminPin('Approuver ce crédit (PIN requis)',()=>{
+    const cr=S.credits.find(c=>c.id===id);if(!cr)return;
+    const m=getMembre(cr.membreId);
+    if(m){m.soldeCC=(parseFloat(m.soldeCC)||0)+parseFloat(cr.montant);m.derniereOp=isoDay();m.statut='actif';gasPush('nfs_membres',m);}
+    cr.statut='encours';
+    const tx=addTx(cr.membreId,'DEPOT',cr.montant,'CC','Déblocage crédit '+id,'approuve');
+    lsSave();gasPush('nfs_credits',cr);gasPush('nfs_transactions',tx);
+    toast('Crédit '+id+' approuvé','ok');renderCredits();
+  });
+}
+function rejeterCr(id){
+  const cr=S.credits.find(c=>c.id===id);
+  if(cr){cr.statut='rejete';lsSave();gasPush('nfs_credits',cr);toast('Dossier rejeté','err');renderCredits();}
+}
+function rembourserCr(id){
+  requireAdminPin('Enregistrer un remboursement (PIN requis)',()=>{
+    const cr=S.credits.find(c=>c.id===id);if(!cr)return;
+    const m=getMembre(cr.membreId);if(!m)return;
+    if((parseFloat(m.soldeCC)||0)<cr.mensualite) return toast('Solde CC insuffisant','err');
+    m.soldeCC=(parseFloat(m.soldeCC)||0)-parseFloat(cr.mensualite);
+    cr.rembourse=(parseFloat(cr.rembourse)||0)+parseFloat(cr.mensualite);
+    m.derniereOp=isoDay();
+    const tx=addTx(cr.membreId,'RETRAIT',cr.mensualite,'CC','Remboursement crédit '+id,'approuve');
+    if(cr.rembourse>=cr.mensualite*cr.duree*0.98) cr.statut='solde';
+    lsSave();gasPush('nfs_membres',m);gasPush('nfs_credits',cr);gasPush('nfs_transactions',tx);
+    toast('Mensualité de '+fmt(cr.mensualite)+' prélevée','ok');renderCredits();
+  });
+}
+
+// ── DEMANDES ─────────────────────────────────────────────────
+function renderDemandes(){
+  document.getElementById('content').innerHTML=`
+  <div class="card"><div style="padding:0;overflow-x:auto">
+    <table>
+      <tr><th>Réf</th><th>Nom</th><th>Téléphone</th><th>Produits</th><th>Date</th><th>Pièces jointes</th><th>Statut</th><th>Actions</th></tr>
+      ${S.demandes.length?S.demandes.slice().reverse().map(d=>`<tr>
+        <td class="fw7 fs11" style="color:var(--blue)">${d.ref}</td>
+        <td>${d.nom} ${d.prenom}</td>
+        <td>${d.tel||'—'}</td>
+        <td class="fs11">${d.produits||'—'}</td>
+        <td class="fs11">${d.date||'—'}</td>
+        <td>
+          <div style="display:flex;gap:4px;flex-wrap:wrap">
+            ${d.cniRectoUrl&&d.cniRectoUrl.startsWith('http')?`<a href="${d.cniRectoUrl}" target="_blank" class="btn btn-p btn-sm" style="text-decoration:none;font-size:10px">🪪 CNI Recto</a>`:''}
+            ${d.cniVersoUrl&&d.cniVersoUrl.startsWith('http')?`<a href="${d.cniVersoUrl}" target="_blank" class="btn btn-p btn-sm" style="text-decoration:none;font-size:10px">🪪 CNI Verso</a>`:''}
+            ${d.photoUrl&&d.photoUrl.startsWith('http')?`<a href="${d.photoUrl}" target="_blank" class="btn btn-p btn-sm" style="text-decoration:none;font-size:10px">📸 Photo</a>`:'<span style="font-size:11px;color:var(--muted)">—</span>'}
+          </div>
+        </td>
+        <td><span class="st st-${d.statut}">${d.statut}</span></td>
+        <td>${d.statut==='en_attente'?`<div style="display:flex;gap:4px">
+          <button class="btn btn-s btn-sm" onclick="accepterDemande('${d.ref}')">✓ Accepter</button>
+          <button class="btn btn-d btn-sm" onclick="rejeterDemande('${d.ref}')">✕</button>
+        </div>`:'—'}</td>
+      </tr>`).join(''):'<tr><td colspan="8" class="empty">Aucune demande</td></tr>'}
+    </table>
+  </div></div>`;}
+
+function accepterDemande(ref){
+  const d=S.demandes.find(x=>x.ref===ref);if(!d)return;
+  requireAdminPin('Accepter la demande de '+d.nom+' '+d.prenom+' (PIN requis)',()=>{
+    const id=nextId('MBR',S.membres);
+    const pinInit='1234';
+    const m={id,ccId:'CC-'+id.slice(4),epId:'EP-'+id.slice(4),nom:d.nom,prenom:d.prenom,tel:d.tel,email:d.email||'',adresse:d.adresse,profession:d.profession,agence:d.agence||'AG01',soldeCC:0,soldeEP:0,pin:pinInit,pinAChanger:true,statut:'actif',dateAdhesion:isoDay(),derniereOp:isoDay()};
+    S.membres.push(m);d.statut='acceptee';d.membreId=id;
+    lsSave();gasPush('nfs_membres',m);gasPush('nfs_demandes',d);
+    toast('Demande acceptée — '+id+' créé (PIN provisoire: '+pinInit+')','ok');
+    renderDemandes();
+  });
+}
+function rejeterDemande(ref){
+  const d=S.demandes.find(x=>x.ref===ref);
+  if(d){d.statut='rejetee';lsSave();gasPush('nfs_demandes',d);toast('Demande rejetée','err');renderDemandes();}
+}
+
+// ── AGENCES ──────────────────────────────────────────────────
+function renderAgences(){
+  document.getElementById('content').innerHTML=`
+  <div style="margin-bottom:12px"><button class="btn btn-p" onclick="ajouterAgence()">+ Nouvelle agence</button></div>
+  <div class="card"><div style="padding:0">
+    <table><tr><th>ID</th><th>Nom</th><th>Ville</th><th>Actions</th></tr>
+    ${S.agences.map(a=>`<tr><td class="fw7">${a.id}</td><td>${a.nom}</td><td>${a.ville}</td>
+      <td><button class="btn btn-d btn-sm" onclick="suppAgence('${a.id}')">✕</button></td></tr>`).join('')}
+    </table>
+  </div></div>`;
+}
+function ajouterAgence(){const nom=prompt('Nom agence :');if(!nom)return;const ville=prompt('Ville :')||'Douala';const id='AG'+String(S.agences.length+1).padStart(2,'0');const ag={id,nom,ville};S.agences.push(ag);lsSave();gasPush('nfs_agences',ag);toast("Agence créée — synchronisée avec l'app","ok");renderAgences();}
+function suppAgence(id){if(!confirm('Supprimer ?'))return;S.agences=S.agences.filter(a=>a.id!==id);lsSave();renderAgences();}
+
+// ── RAPPORTS ─────────────────────────────────────────────────
+function renderRapports(){
+  const totalEP=S.membres.reduce((s,m)=>s+(parseFloat(m.soldeEP)||0),0);
+  const totalCC=S.membres.reduce((s,m)=>s+(parseFloat(m.soldeCC)||0),0);
+  const crEncours=S.credits.filter(c=>c.statut==='encours');
+  const encours=crEncours.reduce((s,c)=>s+(parseFloat(c.montant)||0),0);
+  const totalRembourse=crEncours.reduce((s,c)=>s+(parseFloat(c.rembourse)||0),0);
+  const capitalRestant=encours-totalRembourse;
+  const interetsMensuel=crEncours.reduce((s,c)=>s+(parseFloat(c.mensualite)||0),0);
+  const crSoldes=S.credits.filter(c=>c.statut==='solde').length;
+  const crAttente=S.credits.filter(c=>c.statut==='attente').length;
+  const crRetard=S.credits.filter(c=>c.statut==='retard').length;
+  const mois=isoDay().slice(0,7);
+  const txM=S.transactions.filter(t=>t.date&&t.date.slice(0,7)===mois&&t.statut==='approuve');
+  const dep=txM.filter(t=>t.type==='DEPOT').reduce((s,t)=>s+(parseFloat(t.montant)||0),0);
+  const ret=txM.filter(t=>t.type==='RETRAIT').reduce((s,t)=>s+(parseFloat(t.montant)||0),0);
+  const transform=totalEP?(encours/totalEP*100).toFixed(1):0;
+  const PAR=encours?(S.credits.filter(c=>c.statut==='retard').reduce((s,c)=>s+(parseFloat(c.montant)||0),0)/encours*100).toFixed(1):0;
+  document.getElementById('content').innerHTML=`
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+    <div class="card"><div class="card-hd"><h3>📊 Bilan simplifié</h3></div><div class="card-bd">
+      <div class="sr"><span style="font-size:12px;color:var(--muted)">Épargne (EP)</span><span class="fw7 text-g">${fmt(totalEP)}</span></div>
+      <div class="sr"><span style="font-size:12px;color:var(--muted)">Comptes courants (CC)</span><span class="fw7" style="color:var(--blue)">${fmt(totalCC)}</span></div>
+      <div class="sr"><span style="font-size:12px;color:var(--muted)">Encours crédits</span><span class="fw7 text-r">${fmt(encours)}</span></div>
+      <div class="sr fw7"><span>Total ressources</span><span>${fmt(totalEP+totalCC)}</span></div>
+    </div></div>
+    <div class="card"><div class="card-hd"><h3>📅 Activité du mois</h3></div><div class="card-bd">
+      <div class="sr"><span style="font-size:12px;color:var(--muted)">Dépôts reçus</span><span class="fw7 text-g">${fmt(dep)}</span></div>
+      <div class="sr"><span style="font-size:12px;color:var(--muted)">Retraits effectués</span><span class="fw7 text-r">${fmt(ret)}</span></div>
+      <div class="sr"><span style="font-size:12px;color:var(--muted)">Flux net</span><span class="fw7 ${dep-ret>=0?'text-g':'text-r'}">${fmt(dep-ret)}</span></div>
+      <div class="sr"><span style="font-size:12px;color:var(--muted)">Nb transactions</span><span class="fw7">${txM.length}</span></div>
+    </div></div>
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="card-hd"><h3>💳 Encours Crédits — Analyse complète</h3></div>
+    <div class="card-bd">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+        <div style="text-align:center;padding:10px;background:#DBEAFE;border-radius:8px"><div style="font-size:10px;color:#1D4ED8">En cours</div><div style="font-size:20px;font-weight:700;color:var(--navy)">${crEncours.length}</div></div>
+        <div style="text-align:center;padding:10px;background:#FEF9C3;border-radius:8px"><div style="font-size:10px;color:#CA8A04">En attente</div><div style="font-size:20px;font-weight:700;color:var(--navy)">${crAttente}</div></div>
+        <div style="text-align:center;padding:10px;background:#DCFCE7;border-radius:8px"><div style="font-size:10px;color:var(--green)">Soldés</div><div style="font-size:20px;font-weight:700;color:var(--navy)">${crSoldes}</div></div>
+        <div style="text-align:center;padding:10px;background:#FEE2E2;border-radius:8px"><div style="font-size:10px;color:var(--red)">En retard</div><div style="font-size:20px;font-weight:700;color:var(--red)">${crRetard}</div></div>
+      </div>
+      <div class="sr"><span style="font-size:12px;color:var(--muted)">Capital total décaissé</span><span class="fw7">${fmt(encours)}</span></div>
+      <div class="sr"><span style="font-size:12px;color:var(--muted)">Capital remboursé</span><span class="fw7 text-g">${fmt(totalRembourse)}</span></div>
+      <div class="sr"><span style="font-size:12px;color:var(--muted)">Capital restant dû</span><span class="fw7 text-r">${fmt(capitalRestant)}</span></div>
+      <div class="sr"><span style="font-size:12px;color:var(--muted)">Total mensualités attendues</span><span class="fw7" style="color:var(--blue)">${fmt(interetsMensuel)}</span></div>
+      ${crEncours.length?`
+      <div style="margin-top:12px;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Détail par emprunteur</div>
+      <table>
+        <tr><th>Crédit</th><th>Membre</th><th>Montant</th><th>Remboursé</th><th>Restant</th><th>Progression</th></tr>
+        ${crEncours.map(c=>{
+          const pct=Math.min(100,Math.round((parseFloat(c.rembourse)||0)/(c.mensualite*c.duree)*100));
+          const restant=Math.max(0,(parseFloat(c.montant)||0)-(parseFloat(c.rembourse)||0));
+          return `<tr>
+            <td class="fw7 fs11" style="color:var(--gold)">${c.id}</td>
+            <td>${getNom(c.membreId)}</td>
+            <td class="fw7">${fmt(c.montant)}</td>
+            <td class="text-g">${fmt(c.rembourse||0)}</td>
+            <td class="text-r fw7">${fmt(restant)}</td>
+            <td><div style="display:flex;align-items:center;gap:5px;min-width:80px">
+              <div style="flex:1;background:#E2E8F0;border-radius:4px;height:6px"><div style="width:${pct}%;height:100%;background:linear-gradient(90deg,var(--blue),var(--green));border-radius:4px"></div></div>
+              <span class="fs11">${pct}%</span>
+            </div></td>
+          </tr>`;}).join('')}
+      </table>`:'<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">Aucun crédit en cours</div>'}
+    </div>
+  </div>
+  <div class="card"><div class="card-hd"><h3>📐 Indicateurs COBAC</h3></div>
+    <div class="card-bd" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+      ${[{l:'Taux transformation',v:transform+'%',ok:parseFloat(transform)<=80,n:'≤ 80%'},{l:'PAR30',v:PAR+'%',ok:parseFloat(PAR)<=5,n:'≤ 5%'},{l:'Membres actifs',v:S.membres.filter(m=>m.statut==='actif').length,ok:true,n:'Total'}]
+        .map(i=>`<div style="text-align:center;padding:12px;background:${i.ok?'#F0FDF4':'#FFF1F2'};border-radius:8px"><div style="font-size:10px;color:var(--muted)">${i.l}</div><div style="font-size:22px;font-weight:700;color:${i.ok?'var(--green)':'var(--red)'}">${i.v}</div><div style="font-size:10px;color:var(--muted)">Norme ${i.n}</div></div>`).join('')}
+    </div>
+  </div>`;
+}
+
+// ── HELPERS ──────────────────────────────────────────────────
+function fillMembreSelect(id){const el=document.getElementById(id);if(!el)return;el.innerHTML=S.membres.filter(m=>m.statut==='actif').map(m=>`<option value="${m.id}">${m.nom} ${m.prenom} (${m.id})</option>`).join('');}
+function fillAgenceSelect(id){const el=document.getElementById(id);if(!el)return;el.innerHTML='<option value="">— Sélectionner —</option>'+S.agences.map(a=>`<option value="${a.id}">${a.nom}</option>`).join('');}
+function openM(id){document.getElementById(id).classList.add('open');}
+function closeM(id){document.getElementById(id).classList.remove('open');}
+function swTab(aId,iId,el){document.getElementById(aId).classList.add('active');document.getElementById(iId).classList.remove('active');el.parentElement.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');}
+
+// ── INIT ────────────────────────────────────────────────────
+function refreshActivePage(){nav(currentPage);}
+window.addEventListener('load',async()=>{
+  document.getElementById('topDate').textContent=today();
+  lsLoad();renderDash();
+  const ok=await pullAll();setSyncStatus(ok);
+  if(ok) renderDash();
+  setInterval(async()=>{const ok=await pullAll();setSyncStatus(ok);refreshActivePage();},12000);
+});
+</script>
+</body>
+</html>

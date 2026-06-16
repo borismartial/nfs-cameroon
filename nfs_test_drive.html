@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NFS — Test Drive Upload</title>
+<style>
+  body{font-family:'Segoe UI',sans-serif;max-width:500px;margin:40px auto;padding:20px;background:#F0F4F8;}
+  .box{background:#fff;border-radius:12px;padding:24px;box-shadow:0 2px 8px rgba(0,0,0,.08);}
+  h2{color:#0D2B6E;font-size:18px;margin-bottom:20px;}
+  .btn{width:100%;padding:14px;background:#1A56B0;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;margin-top:10px;}
+  .btn:disabled{opacity:.5;}
+  .result{margin-top:16px;padding:12px;border-radius:8px;font-size:13px;line-height:1.6;}
+  .ok{background:#DCFCE7;color:#16A34A;}
+  .err{background:#FEE2E2;color:#DC2626;}
+  .info{background:#DBEAFE;color:#1D4ED8;}
+  input[type=file]{width:100%;padding:10px;border:1.5px dashed #CBD5E1;border-radius:8px;margin:10px 0;cursor:pointer;}
+  pre{background:#1E293B;color:#A3E635;padding:12px;border-radius:8px;font-size:11px;overflow-x:auto;white-space:pre-wrap;word-break:break-all;}
+  .step{margin-bottom:16px;padding:12px;background:#F8FAFC;border-radius:8px;border-left:3px solid #CBD5E1;}
+  .step.done{border-color:#16A34A;}
+  .step.fail{border-color:#DC2626;}
+  .step-title{font-size:13px;font-weight:700;margin-bottom:4px;}
+  .step-msg{font-size:12px;color:#64748B;}
+</style>
+</head>
+<body>
+<div class="box">
+  <h2>🔧 Test connexion Google Drive</h2>
+
+  <div id="step1" class="step">
+    <div class="step-title">1. Test connexion GAS</div>
+    <div class="step-msg">Vérification que l'URL GAS répond...</div>
+  </div>
+
+  <div id="step2" class="step">
+    <div class="step-title">2. Test upload Drive</div>
+    <div class="step-msg">Choisissez une petite image pour tester</div>
+    <input type="file" id="testFile" accept="image/*">
+  </div>
+
+  <div id="step3" class="step">
+    <div class="step-title">3. Résultat</div>
+    <div class="step-msg" id="step3msg">En attente...</div>
+  </div>
+
+  <button class="btn" id="btnTest" onclick="runTest()">🚀 Lancer le test</button>
+  <div id="logBox" style="margin-top:16px"></div>
+</div>
+
+<script>
+const GAS_URL = "https://script.google.com/macros/s/AKfycby_SNFYilTrCjyCAP-q-EF1C-TjdyniXpCvU07N6UD3RR4Y6zqfxq16OYQo3lZjKxZN/exec";
+
+function log(msg, type='info'){
+  const d = document.getElementById('logBox');
+  const el = document.createElement('div');
+  el.className = 'result ' + type;
+  el.textContent = msg;
+  d.appendChild(el);
+}
+
+function setStep(n, status, msg){
+  const s = document.getElementById('step'+n);
+  s.className = 'step ' + status;
+  s.querySelector('.step-msg').textContent = msg;
+}
+
+async function runTest(){
+  document.getElementById('btnTest').disabled = true;
+  document.getElementById('logBox').innerHTML = '';
+
+  // STEP 1 — Test GAS
+  setStep(1,'','Test en cours...');
+  try {
+    const r = await fetch(GAS_URL + '?action=get&table=nfs_membres&t=' + Date.now());
+    if(r.ok){
+      const j = await r.json();
+      setStep(1,'done','✅ GAS accessible — ' + (j.data?.length||0) + ' membres trouvés');
+      log('GAS OK — réponse reçue', 'ok');
+    } else {
+      setStep(1,'fail','❌ GAS répond HTTP ' + r.status);
+      log('GAS erreur HTTP ' + r.status, 'err');
+      document.getElementById('btnTest').disabled = false;
+      return;
+    }
+  } catch(e){
+    setStep(1,'fail','❌ Erreur réseau : ' + e.message);
+    log('Erreur : ' + e.message, 'err');
+    document.getElementById('btnTest').disabled = false;
+    return;
+  }
+
+  // STEP 2 — Test upload
+  const fileInput = document.getElementById('testFile');
+  if(!fileInput.files || !fileInput.files[0]){
+    setStep(2,'fail','⚠️ Aucun fichier sélectionné — choisissez une image');
+    log('Sélectionnez un fichier image avant de tester', 'err');
+    document.getElementById('btnTest').disabled = false;
+    return;
+  }
+
+  setStep(2,'','Upload en cours...');
+  const file = fileInput.files[0];
+  log('Fichier : ' + file.name + ' (' + Math.round(file.size/1024) + ' Ko)', 'info');
+
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    // Compresser
+    const compressed = await compressImage(e.target.result, 400, 0.6);
+    const sizeBefore = Math.round(e.target.result.length/1024);
+    const sizeAfter  = Math.round(compressed.length/1024);
+    log('Compression : ' + sizeBefore + ' Ko → ' + sizeAfter + ' Ko', 'info');
+
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 30000);
+      log('Envoi vers Google Drive...', 'info');
+
+      const resp = await fetch(GAS_URL, {
+        method: 'POST',
+        signal: controller.signal,
+        body: JSON.stringify({
+          action: 'uploadFile',
+          fileName: 'TEST_NFS_' + Date.now() + '.jpg',
+          fileData: compressed,
+          mimeType: 'image/jpeg',
+          subfolder: 'Tests'
+        })
+      });
+      clearTimeout(timer);
+
+      const raw = await resp.text();
+      log('Réponse brute GAS : ' + raw.slice(0,300), 'info');
+
+      try {
+        const j = JSON.parse(raw);
+        if(j.ok && j.url){
+          setStep(2,'done','✅ Upload réussi !');
+          setStep(3,'done','✅ Fichier disponible sur Drive');
+          log('URL Drive : ' + j.url, 'ok');
+          const link = document.createElement('a');
+          link.href = j.url; link.target = '_blank';
+          link.style.cssText = 'display:block;margin-top:10px;padding:10px;background:#DCFCE7;border-radius:8px;color:#16A34A;font-weight:700;text-decoration:none;font-size:13px';
+          link.textContent = '📂 Ouvrir le fichier test sur Drive →';
+          document.getElementById('logBox').appendChild(link);
+        } else {
+          setStep(2,'fail','❌ GAS a répondu mais upload échoué');
+          setStep(3,'fail','Erreur : ' + (j.error||'inconnue'));
+          log('Erreur GAS : ' + (j.error||JSON.stringify(j)), 'err');
+        }
+      } catch(pe){
+        setStep(2,'fail','❌ Réponse non-JSON');
+        log('Parse error : ' + pe.message + '\nRéponse : ' + raw.slice(0,500), 'err');
+      }
+    } catch(fe){
+      if(fe.name === 'AbortError'){
+        setStep(2,'fail','❌ Timeout — GAS n\'a pas répondu en 30s');
+        log('Timeout : le GAS prend trop de temps. Vérifiez les autorisations Drive dans Apps Script.', 'err');
+      } else {
+        setStep(2,'fail','❌ Erreur fetch : ' + fe.message);
+        log('Fetch error : ' + fe.message, 'err');
+      }
+    }
+    document.getElementById('btnTest').disabled = false;
+  };
+  reader.readAsDataURL(file);
+}
+
+function compressImage(dataUrl, maxWidth, quality){
+  return new Promise(resolve => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let w=img.width, h=img.height;
+      if(w>maxWidth){h=Math.round(h*maxWidth/w);w=maxWidth;}
+      canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+</script>
+</body>
+</html>
