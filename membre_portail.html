@@ -617,11 +617,20 @@ function gasGet(table) {
   });
 }
 
-// POST via fetch no-cors
+// POST via XMLHttpRequest (évite le problème no-cors qui supprime Content-Type)
 async function gasPost(body) {
-  try {
-    await fetch(GAS_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(body) });
-  } catch(e) {}
+  return new Promise((resolve) => {
+    try {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', GAS_URL, true);
+      xhr.setRequestHeader('Content-Type', 'text/plain');
+      xhr.timeout = 20000;
+      xhr.onload  = () => resolve(true);
+      xhr.onerror = () => resolve(false);
+      xhr.ontimeout = () => resolve(false);
+      xhr.send(JSON.stringify(body));
+    } catch(e) { resolve(false); }
+  });
 }
 
 function gasPush(table, row) { gasPost({ action: 'upsert', table, row }).catch(() => {}); }
@@ -653,20 +662,31 @@ async function gasUploadFile(inputId, fileName, subfolder) {
     reader.onload = async (e) => {
       try {
         let fileData = e.target.result;
+        // Compression image
         if (file.type.startsWith('image/')) {
-          fileData = await compressImage(fileData, 800, 0.7);
+          fileData = await compressImage(fileData, 700, 0.65);
         }
-        await fetch(GAS_URL, {
-          method: 'POST', mode: 'no-cors',
-          body: JSON.stringify({
-            action: 'uploadFile',
-            fileName: fileName || file.name,
-            fileData: fileData,
-            mimeType: file.type || 'image/jpeg',
-            subfolder: subfolder || ''
-          })
+        const payload = JSON.stringify({
+          action: 'uploadFile',
+          fileName: fileName || file.name,
+          fileData: fileData,
+          mimeType: file.type || 'image/jpeg',
+          subfolder: subfolder || ''
         });
-        resolve('uploaded');
+        // XHR — seule méthode qui fonctionne avec GAS depuis mobile
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', GAS_URL, true);
+        xhr.setRequestHeader('Content-Type', 'text/plain');
+        xhr.timeout = 30000;
+        xhr.onload = () => {
+          try {
+            const j = JSON.parse(xhr.responseText);
+            resolve(j.ok && j.url ? j.url : 'uploaded');
+          } catch(e) { resolve('uploaded'); }
+        };
+        xhr.onerror   = () => resolve(null);
+        xhr.ontimeout = () => resolve(null);
+        xhr.send(payload);
       } catch(err) { resolve(null); }
     };
     reader.onerror = () => resolve(null);
