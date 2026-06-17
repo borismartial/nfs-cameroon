@@ -354,16 +354,26 @@ function compressImage(dataUrl, maxWidth, quality) {
 const S={membres:[],transactions:[],credits:[],agences:[],demandes:[],currentOp:null,editId:null,pendingAction:null};
 const INACTIF_JOURS=90; // Inactif si aucune op depuis 90 jours
 
+function dedupeById(arr, pk){
+  const map = {};
+  arr.forEach(item=>{
+    const key = item[pk];
+    if(!key) return;
+    map[key] = item; // dernière occurrence gagne
+  });
+  return Object.values(map);
+}
+
 function lsLoad(){
-  S.membres=JSON.parse(localStorage.getItem('nfs_membres')||'[]');
-  S.transactions=JSON.parse(localStorage.getItem('nfs_transactions')||'[]');
-  S.credits=JSON.parse(localStorage.getItem('nfs_credits')||'[]');
+  S.membres=dedupeById(JSON.parse(localStorage.getItem('nfs_membres')||'[]'), 'id');
+  S.transactions=dedupeById(JSON.parse(localStorage.getItem('nfs_transactions')||'[]'), 'id');
+  S.credits=dedupeById(JSON.parse(localStorage.getItem('nfs_credits')||'[]'), 'id');
   S.agences=JSON.parse(localStorage.getItem('nfs_agences')||'[]');
-  S.demandes=JSON.parse(localStorage.getItem('nfs_demandes')||'[]');
+  S.demandes=dedupeById(JSON.parse(localStorage.getItem('nfs_demandes')||'[]'), 'ref');
   if(!S.agences.length){
     S.agences=[{id:'AG01',nom:'Siège Douala Akwa',ville:'Douala'},{id:'AG02',nom:'Agence Bonanjo',ville:'Douala'}];
-    lsSave();
   }
+  lsSave(); // Persister les données dédupliquées
   checkInactivite();
 }
 function lsSave(){
@@ -461,8 +471,24 @@ function toast(msg,type=''){
 function getMembre(id){return S.membres.find(m=>m.id===id);}
 function getNom(id){const m=getMembre(id);return m?m.nom+' '+m.prenom:id||'—';}
 function updateBadges(){
-  const dep=S.transactions.filter(t=>t.statut==='attente').length;
-  const dem=S.demandes.filter(d=>d.statut==='en_attente').length;
+  // Dédupliquer par ID pour éviter les faux comptes dus à des doublons locaux
+  const seenTx = new Set();
+  const dep = S.transactions.filter(t=>{
+    if(t.statut!=='attente') return false;
+    if(!t.id || seenTx.has(t.id)) return false;
+    seenTx.add(t.id);
+    return true;
+  }).length;
+
+  const seenDem = new Set();
+  const dem = S.demandes.filter(d=>{
+    if(d.statut!=='en_attente') return false;
+    const key = d.ref || d.id;
+    if(!key || seenDem.has(key)) return false;
+    seenDem.add(key);
+    return true;
+  }).length;
+
   document.getElementById('badge-depots').textContent=dep;
   document.getElementById('badge-depots').style.display=dep?'inline':'none';
   document.getElementById('badge-demandes').textContent=dem;
@@ -754,48 +780,61 @@ function saveMembre(){
 // ── OPERATIONS ───────────────────────────────────────────────
 function renderDepots(){
   updateBadges();
-  const ops=S.transactions.filter(t=>t.type==='DEPOT'||t.type==='RETRAIT');
+  // Dédupliquer par ID au cas où des doublons subsistent dans le state local
+  const seen = new Set();
+  const ops = S.transactions.filter(t=>{
+    if(t.type!=='DEPOT' && t.type!=='RETRAIT') return false;
+    if(!t.id || seen.has(t.id)) return false;
+    seen.add(t.id);
+    return true;
+  });
+  const enAttente = ops.filter(t=>t.statut==='attente');
+
   document.getElementById('content').innerHTML=`
   <div style="display:flex;gap:10px;margin-bottom:14px">
     <button class="btn btn-s" onclick="openOp('DEPOT')">📥 Dépôt</button>
     <button class="btn btn-w" onclick="openOp('RETRAIT')">📤 Retrait</button>
   </div>
   <div class="tab-bar">
-    <div class="tab active" onclick="swTab('tEnAt','tHist',this)">En attente (${ops.filter(t=>t.statut==='attente').length})</div>
+    <div class="tab active" onclick="swTab('tEnAt','tHist',this)">En attente (${enAttente.length})</div>
     <div class="tab" onclick="swTab('tHist','tEnAt',this)">Historique</div>
   </div>
   <div id="tEnAt" class="tab-c active">
-    <div class="card"><div style="padding:0">
+    <div class="card"><div style="padding:0;overflow-x:auto">
       <table>
-        <tr><th>Date</th><th>Membre</th><th>Type</th><th>Compte</th><th>Montant</th><th>Motif</th><th>Actions</th></tr>
-        ${ops.filter(t=>t.statut==='attente').map(t=>`<tr>
+        <tr><th>Date</th><th>Membre</th><th>Type</th><th>Compte</th><th>Montant</th><th>Motif</th><th>Preuve de versement</th><th>Mode de retrait souhaité</th><th>Actions</th></tr>
+        ${enAttente.map(t=>`<tr>
           <td class="fs11">${t.dateAff||t.date}</td>
           <td>${getNom(t.membreId)}</td>
           <td style="font-weight:700;color:${t.type==='DEPOT'?'var(--green)':'var(--red)'}">${t.type}</td>
           <td><span class="acc-pill acc-${t.compte==='CC'?'cc':'ep'}">${t.compte}</span></td>
           <td class="fw7">${fmt(t.montant)}</td>
           <td class="fs11">${t.motif||'—'}</td>
+          <td>${formatPreuve(t.recu)}</td>
+          <td>${t.type==='RETRAIT'?formatModeRetrait(t.modeRetrait):'—'}</td>
           <td><div style="display:flex;gap:4px">
             <button class="btn btn-s btn-sm" onclick="demanderApprob('${t.id}','approuver')">✓ Approuver</button>
             <button class="btn btn-d btn-sm" onclick="demanderApprob('${t.id}','rejeter')">✕ Rejeter</button>
           </div></td>
-        </tr>`).join('')||'<tr><td colspan="7" class="empty">Aucune opération en attente</td></tr>'}
+        </tr>`).join('')||'<tr><td colspan="9" class="empty">Aucune opération en attente</td></tr>'}
       </table>
     </div></div>
   </div>
   <div id="tHist" class="tab-c">
-    <div class="card"><div style="padding:0">
+    <div class="card"><div style="padding:0;overflow-x:auto">
       <table>
-        <tr><th>Date</th><th>Membre</th><th>Type</th><th>Compte</th><th>Montant</th><th>Motif</th><th>Statut</th></tr>
+        <tr><th>Date</th><th>Membre</th><th>Type</th><th>Compte</th><th>Montant</th><th>Motif</th><th>Preuve</th><th>Mode retrait</th><th>Statut</th></tr>
         ${ops.filter(t=>t.statut!=='attente').slice().reverse().map(t=>`<tr>
           <td class="fs11">${t.dateAff||t.date}</td>
           <td>${getNom(t.membreId)}</td>
           <td style="font-size:10px;font-weight:700">${t.type}</td>
           <td><span class="acc-pill acc-${t.compte==='CC'?'cc':'ep'}">${t.compte}</span></td>
           <td class="fw7 ${t.type==='DEPOT'?'text-g':'text-r'}">${fmt(t.montant)}</td>
-          <td class="fs11">${t.motif||'—'}${t.recu&&t.recu.startsWith('http')?` <a href="${t.recu}" target="_blank" style="color:var(--blue)">📎</a>`:''}</td>
+          <td class="fs11">${t.motif||'—'}</td>
+          <td>${formatPreuve(t.recu)}</td>
+          <td>${t.type==='RETRAIT'?formatModeRetrait(t.modeRetrait):'—'}</td>
           <td><span class="st st-${t.statut}">${t.statut}</span></td>
-        </tr>`).join('')||'<tr><td colspan="7" class="empty">Aucune transaction</td></tr>'}
+        </tr>`).join('')||'<tr><td colspan="9" class="empty">Aucune transaction</td></tr>'}
       </table>
     </div></div>
   </div>`;
@@ -894,9 +933,9 @@ function renderCredits(){
   </div>
   <div id="crL" class="tab-c active">
     <div style="margin-bottom:12px"><button class="btn btn-g" onclick="openCr()">+ Nouveau dossier</button></div>
-    <div class="card"><div style="padding:0">
+    <div class="card"><div style="padding:0;overflow-x:auto">
       <table>
-        <tr><th>ID</th><th>Membre</th><th>Montant</th><th>Durée</th><th>Mensualité</th><th>Remboursé</th><th>Statut</th><th>Actions</th></tr>
+        <tr><th>ID</th><th>Membre</th><th>Montant</th><th>Durée</th><th>Objet</th><th>Garantie</th><th>Pièce jointe</th><th>Taux</th><th>Mensualité</th><th>Remboursé</th><th>Statut</th><th>Actions</th></tr>
         ${S.credits.map(c=>{
           const pct=c.mensualite&&c.duree?Math.min(100,Math.round((parseFloat(c.rembourse)||0)/(c.mensualite*c.duree)*100)):0;
           return `<tr>
@@ -904,7 +943,11 @@ function renderCredits(){
             <td>${getNom(c.membreId)}</td>
             <td class="fw7">${fmt(c.montant)}</td>
             <td>${c.duree} mois</td>
-            <td style="color:var(--blue);font-weight:700">${fmt(c.mensualite)}</td>
+            <td class="fs11">${c.objet||'—'}</td>
+            <td class="fs11">${c.garantie||'—'}</td>
+            <td>${formatGarantieJointe(c.garantieUrl)}</td>
+            <td class="fs11">${c.taux?c.taux+'%/mois':'<span style="color:var(--muted)">à définir</span>'}</td>
+            <td style="color:var(--blue);font-weight:700">${c.mensualite?fmt(c.mensualite):'—'}</td>
             <td>
               <div style="font-size:11px">${fmt(c.rembourse||0)}</div>
               <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
@@ -915,7 +958,7 @@ function renderCredits(){
               ${c.statut==='attente'?`<button class="btn btn-s btn-sm" onclick="approuverCr('${c.id}')">Approuver</button><button class="btn btn-d btn-sm" onclick="rejeterCr('${c.id}')">Rejeter</button>`:''}
               ${c.statut==='encours'?`<button class="btn btn-p btn-sm" onclick="rembourserCr('${c.id}')">Rembourser</button>`:''}
             </div></td>
-          </tr>`;}).join('')||'<tr><td colspan="8" class="empty">Aucun crédit</td></tr>'}
+          </tr>`;}).join('')||'<tr><td colspan="12" class="empty">Aucun crédit</td></tr>'}
       </table>
     </div></div>
   </div>
@@ -977,14 +1020,29 @@ function saveCr(){
   toast('Dossier '+cr.id+' soumis','ok');closeM('mCr');renderCredits();
 }
 function approuverCr(id){
-  requireAdminPin('Approuver ce crédit (PIN requis)',()=>{
-    const cr=S.credits.find(c=>c.id===id);if(!cr)return;
+  const cr=S.credits.find(c=>c.id===id);if(!cr)return;
+  // Demander le taux mensuel à l'admin (le membre ne le choisit plus)
+  const tauxStr = prompt('Taux mensuel à appliquer pour ce crédit (%) — ex: 5', cr.taux||'5');
+  if(tauxStr===null) return; // annulé
+  const taux = parseFloat(tauxStr);
+  if(!taux || taux<=0 || taux>50){ toast('Taux invalide (doit être entre 0 et 50%)','err'); return; }
+
+  requireAdminPin('Approuver ce crédit au taux de '+taux+'%/mois (PIN requis)',()=>{
+    const r = taux/100;
+    const n = cr.duree;
+    const M = parseFloat(cr.montant);
+    const mens = Math.round(M*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1));
+
+    cr.taux = taux;
+    cr.mensualite = mens;
+    cr.statut = 'encours';
+
     const m=getMembre(cr.membreId);
-    if(m){m.soldeCC=(parseFloat(m.soldeCC)||0)+parseFloat(cr.montant);m.derniereOp=isoDay();m.statut='actif';gasPush('nfs_membres',m);}
-    cr.statut='encours';
-    const tx=addTx(cr.membreId,'DEPOT',cr.montant,'CC','Déblocage crédit '+id,'approuve');
+    if(m){m.soldeCC=(parseFloat(m.soldeCC)||0)+M;m.derniereOp=isoDay();m.statut='actif';gasPush('nfs_membres',m);}
+    const tx=addTx(cr.membreId,'DEPOT',M,'CC','Déblocage crédit '+id,'approuve');
     lsSave();gasPush('nfs_credits',cr);gasPush('nfs_transactions',tx);
-    toast('Crédit '+id+' approuvé','ok');renderCredits();
+    toast('Crédit '+id+' approuvé au taux de '+taux+'%/mois — Mensualité: '+fmt(mens),'ok');
+    renderCredits();
   });
 }
 function rejeterCr(id){
@@ -1042,7 +1100,21 @@ function accepterDemande(ref){
     const m={id,ccId:'CC-'+id.slice(4),epId:'EP-'+id.slice(4),nom:d.nom,prenom:d.prenom,tel:d.tel,email:d.email||'',adresse:d.adresse,profession:d.profession,agence:d.agence||'AG01',soldeCC:0,soldeEP:0,pin:pinInit,pinAChanger:true,statut:'actif',dateAdhesion:isoDay(),derniereOp:isoDay()};
     S.membres.push(m);d.statut='acceptee';d.membreId=id;
     lsSave();gasPush('nfs_membres',m);gasPush('nfs_demandes',d);
-    toast('Demande acceptée — '+id+' créé (PIN provisoire: '+pinInit+')','ok');
+
+    // Envoyer l'email de bienvenue avec identifiants
+    if(d.email){
+      gasPost({
+        action: 'sendWelcomeEmail',
+        email: d.email,
+        nom: d.nom,
+        prenom: d.prenom,
+        memberId: id,
+        pin: pinInit
+      });
+      toast('Demande acceptée — '+id+' créé. Email envoyé à '+d.email,'ok');
+    } else {
+      toast('Demande acceptée — '+id+' créé (PIN provisoire: '+pinInit+'). Aucun email renseigné.','ok');
+    }
     renderDemandes();
   });
 }
@@ -1144,14 +1216,28 @@ function renderRapports(){
 function formatModeRetrait(modeStr){
   try {
     const m = typeof modeStr === 'string' ? JSON.parse(modeStr) : modeStr;
-    if(!m || !m.mode) return '';
-    const styles = 'font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;';
-    if(m.mode==='CASH') return `<span style="${styles}background:#DCFCE7;color:#16A34A">💵 CASH — ${m.agence||''} le ${m.date||'—'} ${m.horaire||''}</span>`;
-    if(m.mode==='ORANGE_MONEY') return `<span style="${styles}background:#FEF3C7;color:#D97706">🟠 Orange Money — ${m.numero||'—'} (${m.nom||''})</span>`;
-    if(m.mode==='MTN_MONEY') return `<span style="${styles}background:#FEF9C3;color:#CA8A04">🟡 MTN MoMo — ${m.numero||'—'} (${m.nom||''})</span>`;
-    if(m.mode==='VIREMENT_BANCAIRE') return `<span style="${styles}background:#DBEAFE;color:#1D4ED8">🏦 Virement — ${m.banque||'—'} · ${m.compte||'—'} (${m.nom||''})</span>`;
-    return '';
-  } catch(e){ return ''; }
+    if(!m || !m.mode) return '<span class="fs11" style="color:var(--muted)">—</span>';
+    const wrap = 'display:block;font-size:11px;font-weight:600;padding:3px 8px;border-radius:8px;margin-bottom:2px;white-space:nowrap';
+    if(m.mode==='CASH') return `<span style="${wrap};background:#DCFCE7;color:#16A34A">💵 CASH</span><div class="fs11" style="color:var(--muted)">${m.agence||'—'}<br>${m.date||'—'} · ${m.horaire||'—'}</div>`;
+    if(m.mode==='ORANGE_MONEY') return `<span style="${wrap};background:#FEF3C7;color:#D97706">🟠 Orange Money</span><div class="fs11" style="color:var(--muted)">${m.numero||'—'}<br>${m.nom||''}</div>`;
+    if(m.mode==='MTN_MONEY') return `<span style="${wrap};background:#FEF9C3;color:#CA8A04">🟡 MTN MoMo</span><div class="fs11" style="color:var(--muted)">${m.numero||'—'}<br>${m.nom||''}</div>`;
+    if(m.mode==='VIREMENT_BANCAIRE') return `<span style="${wrap};background:#DBEAFE;color:#1D4ED8">🏦 Virement bancaire</span><div class="fs11" style="color:var(--muted)">${m.banque||'—'}<br>N° ${m.compte||'—'}<br>${m.nom||''}</div>`;
+    return '<span class="fs11" style="color:var(--muted)">—</span>';
+  } catch(e){ return '<span class="fs11" style="color:var(--muted)">—</span>'; }
+}
+
+function formatGarantieJointe(url){
+  if(!url || !url.startsWith('http')){
+    return '<span class="fs11" style="color:var(--muted)">—</span>';
+  }
+  return `<a href="${url}" target="_blank" class="btn btn-p btn-sm" style="text-decoration:none;font-size:10px;white-space:nowrap">📎 Voir</a>`;
+}
+
+function formatPreuve(recu){
+  if(!recu || !recu.startsWith('http')){
+    return '<span class="fs11" style="color:var(--red)">⚠️ Aucune</span>';
+  }
+  return `<a href="${recu}" target="_blank" class="btn btn-p btn-sm" style="text-decoration:none;font-size:10px;white-space:nowrap">📎 Voir</a>`;
 }
 
 function fillMembreSelect(id){const el=document.getElementById(id);if(!el)return;el.innerHTML=S.membres.filter(m=>m.statut==='actif').map(m=>`<option value="${m.id}">${m.nom} ${m.prenom} (${m.id})</option>`).join('');}

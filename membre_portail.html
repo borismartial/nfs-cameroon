@@ -444,39 +444,48 @@ body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-he
   <div class="scrollable" style="padding:14px">
     <!-- Suivi crédits en cours -->
     <div id="creditSuivi"></div>
-    <div style="background:#fff;border-radius:14px;padding:16px;border:1px solid var(--border);margin-top:4px">
-      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:14px">📩 Nouvelle demande</div>
-      <div class="form-group"><label class="form-label">Montant (FCFA) *</label><input class="form-input" id="crMontant" type="number" min="1" placeholder="Ex: 500 000" oninput="simCredit()"></div>
-      <div class="form-group"><label class="form-label">Durée (mois, max 12)</label><input class="form-input" id="crDuree" type="number" min="1" max="12" value="6" oninput="simCredit()"></div>
-      <div class="form-group"><label class="form-label">Taux mensuel</label><select class="form-select" id="crTaux" onchange="simCredit()">
-        <option value="2">2% / mois</option><option value="3">3% / mois</option>
-        <option value="4">4% / mois</option><option value="5">5% / mois</option>
-        <option value="6">6% / mois</option><option value="8">8% / mois</option>
-        <option value="10">10% / mois</option><option value="12">12% / mois</option>
-        <option value="15">15% / mois</option><option value="20">20% / mois</option>
-        <option value="25">25% / mois</option><option value="30">30% / mois</option>
-        <option value="40">40% / mois</option><option value="50">50% / mois</option>
-      </select></div>
-      <div id="crSim" style="display:none;background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:12px;margin-bottom:12px;font-size:12px">
-        <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--muted)">Mensualité</span><span class="fw7" id="crMens">—</span></div>
-        <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--muted)">Total à rembourser</span><span class="fw7 text-red" id="crTotal">—</span></div>
-        <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--muted)">Coût du crédit</span><span class="fw7" style="color:var(--orange)" id="crCout">—</span></div>
+
+    <!-- SIMULATEUR (indépendant de la demande) -->
+    <div style="background:#fff;border-radius:14px;padding:16px;border:1px solid var(--border);margin-bottom:14px">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:4px">🧮 Simulateur de crédit</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Estimez vos mensualités selon différents taux. Le taux final est fixé par l'administrateur lors de l'étude de votre dossier.</div>
+      <div class="form-group"><label class="form-label">Montant à simuler (FCFA)</label><input class="form-input" id="simMontant" type="number" min="1" placeholder="Ex: 500 000" oninput="simulateurCredit()"></div>
+      <div class="form-group"><label class="form-label">Durée (mois, max 12)</label><input class="form-input" id="simDuree" type="number" min="1" max="12" value="6" oninput="simulateurCredit()"></div>
+      <div class="form-group">
+        <label class="form-label">Taux mensuel à tester (%)</label>
+        <input class="form-input" id="simTauxRange" type="range" min="1" max="50" value="2" step="0.5" style="padding:0" oninput="document.getElementById('simTauxVal').textContent=this.value+'%';simulateurCredit()">
+        <div style="text-align:center;font-size:18px;font-weight:800;color:var(--gold);margin-top:6px" id="simTauxVal">2%</div>
       </div>
-      <div class="form-group"><label class="form-label">Objet du crédit</label><input class="form-input" id="crObjet" placeholder="Ex: Fonds de commerce"></div>
+      <div id="simResult" style="display:none;background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:12px;font-size:12px">
+        <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--muted)">Mensualité estimée</span><span class="fw7" id="simMens">—</span></div>
+        <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--muted)">Total à rembourser</span><span class="fw7 text-red" id="simTotal">—</span></div>
+        <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--muted)">Coût du crédit</span><span class="fw7" style="color:var(--orange)" id="simCout">—</span></div>
+      </div>
+    </div>
+
+    <!-- DEMANDE RÉELLE (sans choix de taux) -->
+    <div style="background:#fff;border-radius:14px;padding:16px;border:1px solid var(--border);margin-top:4px">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:4px">📩 Nouvelle demande de crédit</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:12px">Le taux d'intérêt sera déterminé par l'administrateur après étude de votre dossier.</div>
+      <div class="form-group"><label class="form-label">Montant souhaité (FCFA) *</label><input class="form-input" id="crMontant" type="number" min="1" placeholder="Ex: 500 000"></div>
+      <div class="form-group"><label class="form-label">Durée souhaitée (mois, max 12) *</label><input class="form-input" id="crDuree" type="number" min="1" max="12" value="6"></div>
+      <div class="form-group"><label class="form-label">Objet du crédit *</label><input class="form-input" id="crObjet" placeholder="Ex: Fonds de commerce"></div>
       <div class="form-group"><label class="form-label">Garantie proposée</label><input class="form-input" id="crGarantie" placeholder="Ex: Caution personnelle, Titre foncier..."></div>
+
       <div class="form-group">
         <label class="form-label">📎 Justificatifs de garantie (optionnel)</label>
         <div style="background:#FEF9C3;border:1px solid #FDE68A;border-radius:8px;padding:9px 11px;margin-bottom:8px;font-size:11px;color:#92400E">
-          📌 Joignez une photo, une vidéo ou un document justifiant votre garantie (titre foncier, attestation, etc.)
+          📌 Joignez une photo, une vidéo ou un document justifiant votre garantie (titre foncier, attestation, etc.). Visible par l'administrateur lors de l'étude du dossier.
         </div>
         <div style="display:flex;gap:8px">
-          <button type="button" onclick="document.getElementById('crGarantieFile').click()" style="flex:1;padding:10px;background:#F8FAFC;border:1.5px dashed var(--border);border-radius:10px;font-size:12px;cursor:pointer;color:var(--navy)">📷 Photo / Vidéo</button>
-          <button type="button" onclick="document.getElementById('crGarantiePdf').click()" style="flex:1;padding:10px;background:#F8FAFC;border:1.5px dashed var(--border);border-radius:10px;font-size:12px;cursor:pointer;color:var(--navy)">📄 Document</button>
+          <button type="button" onclick="document.getElementById('crGarantiePhotoVideo').click()" style="flex:1;padding:10px;background:#F8FAFC;border:1.5px dashed var(--border);border-radius:10px;font-size:12px;cursor:pointer;color:var(--navy)">📷 Photo / 🎥 Vidéo</button>
+          <button type="button" onclick="document.getElementById('crGarantieDoc').click()" style="flex:1;padding:10px;background:#F8FAFC;border:1.5px dashed var(--border);border-radius:10px;font-size:12px;cursor:pointer;color:var(--navy)">📄 Document</button>
         </div>
-        <input type="file" id="crGarantieFile" accept="image/*,video/*" style="display:none" onchange="showGarantiePreview(this)">
-        <input type="file" id="crGarantiePdf" accept=".pdf,.doc,.docx" style="display:none" onchange="showGarantiePreview(this)">
+        <input type="file" id="crGarantiePhotoVideo" accept="image/*,video/*" style="display:none" onchange="showGarantiePreview(this)">
+        <input type="file" id="crGarantieDoc" accept=".pdf,.doc,.docx,image/*" style="display:none" onchange="showGarantiePreview(this)">
         <div id="crGarantiePreview" style="display:none;margin-top:8px;font-size:11px;color:var(--green);font-weight:600"></div>
       </div>
+
       <button class="main-btn gold" onclick="demandeCredit()">📩 Soumettre ma demande</button>
     </div>
   </div>
@@ -1071,33 +1080,67 @@ function renderCreditScreen(){
         </div>`;}).join('')
     :'';
 }
-function simCredit(){
-  const M=parseFloat(document.getElementById('crMontant').value)||0;
-  const n=parseFloat(document.getElementById('crDuree').value)||0;
-  const r=parseFloat(document.getElementById('crTaux').value)/100||0;
-  if(!M||!n||!r){document.getElementById('crSim').style.display='none';return;}
+function simulateurCredit(){
+  const M=parseFloat(document.getElementById('simMontant').value)||0;
+  const n=parseFloat(document.getElementById('simDuree').value)||0;
+  const r=parseFloat(document.getElementById('simTauxRange').value)/100||0;
+  if(!M||!n||!r){document.getElementById('simResult').style.display='none';return;}
   const mens=M*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1);
   const total=mens*n;
-  document.getElementById('crMens').textContent=fmt(Math.round(mens));
-  document.getElementById('crTotal').textContent=fmt(Math.round(total));
-  document.getElementById('crCout').textContent=fmt(Math.round(total-M));
-  document.getElementById('crSim').style.display='block';
+  document.getElementById('simMens').textContent=fmt(Math.round(mens));
+  document.getElementById('simTotal').textContent=fmt(Math.round(total));
+  document.getElementById('simCout').textContent=fmt(Math.round(total-M));
+  document.getElementById('simResult').style.display='block';
 }
-function demandeCredit(){
-  const M=parseFloat(document.getElementById('crMontant').value);
-  const n=parseInt(document.getElementById('crDuree').value);
-  const taux=parseFloat(document.getElementById('crTaux').value);
-  if(!M||!n) return toast('Montant et durée requis','err');
-  // PIN désactivé temporairement
-  (()=>{
-    const r=taux/100;
-    const mens=Math.round(M*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1));
-    const credits=getCredits();
-    const cr={id:'CR-'+String(credits.length+1).padStart(7,'0'),membreId:ME.id,montant:M,duree:n,taux,mensualite:mens,objet:document.getElementById('crObjet').value,statut:'attente',date:isoDay(),rembourse:0};
-    credits.push(cr);lsSet('nfs_credits',credits);gasPush('nfs_credits',cr);
-    document.getElementById('crMontant').value='';document.getElementById('crObjet').value='';document.getElementById('crSim').style.display='none';
-    showSuccess('📩','Demande envoyée !','Votre dossier de crédit pour '+fmt(M)+' est en attente d\'approbation.','Dossier : '+cr.id);
-  })();
+async function demandeCredit(){
+  const M = parseFloat(document.getElementById('crMontant').value);
+  const n = parseInt(document.getElementById('crDuree').value);
+  const objet = document.getElementById('crObjet').value.trim();
+  const garantieTxt = document.getElementById('crGarantie').value.trim();
+  if(!M || !n) return toast('Montant et durée requis','err');
+  if(!objet) return toast('Objet du crédit requis','err');
+
+  // Uploader la garantie si présente (non bloquant niveau UX mais on attend le résultat)
+  const hasPV = document.getElementById('crGarantiePhotoVideo')?.files?.[0];
+  const hasDoc = document.getElementById('crGarantieDoc')?.files?.[0];
+
+  let garantieUrl = '';
+  if(hasPV || hasDoc){
+    toast('Envoi de la garantie en cours...');
+    const ts = Date.now();
+    if(hasPV){
+      garantieUrl = await gasUploadFile('crGarantiePhotoVideo', 'GARANTIE_'+ME.id+'_'+ts, 'Garanties crédit') || '';
+    } else if(hasDoc){
+      garantieUrl = await gasUploadFile('crGarantieDoc', 'GARANTIE_DOC_'+ME.id+'_'+ts, 'Garanties crédit') || '';
+    }
+  }
+
+  const credits = getCredits();
+  const cr = {
+    id: 'CR-'+String(credits.length+1).padStart(7,'0'),
+    membreId: ME.id,
+    montant: M,
+    duree: n,
+    objet,
+    garantie: garantieTxt,
+    garantieUrl: garantieUrl,
+    statut: 'attente',
+    date: isoDay(),
+    rembourse: 0
+    // taux et mensualite seront définis par l'administrateur à l'approbation
+  };
+  credits.push(cr);
+  lsSet('nfs_credits', credits);
+  gasPush('nfs_credits', cr);
+
+  document.getElementById('crMontant').value='';
+  document.getElementById('crObjet').value='';
+  document.getElementById('crGarantie').value='';
+  try{ clearRecu('crGarantiePhotoVideo','crGarantiePreview',null); }catch(e){}
+
+  showSuccess('📩','Demande envoyée !',
+    'Votre dossier de crédit pour '+fmt(M)+' est en attente d\'étude. Le taux et les modalités vous seront communiqués après validation.',
+    'Dossier : '+cr.id);
 }
 
 // ── HISTORIQUE ───────────────────────────────────────────────
