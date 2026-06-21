@@ -118,6 +118,7 @@ body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-he
 .text-green{color:var(--green);}
 .text-red{color:var(--red);}
 .fw7{font-weight:700;}
+@keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
 </style>
 </head>
 <body>
@@ -165,7 +166,10 @@ body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-he
         <div class="form-group"><label class="form-label">Prénom(s) *</label><input class="form-input" id="a-prenom" placeholder="Prénom(s)"></div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
           <div class="form-group"><label class="form-label">Sexe</label><select class="form-select" id="a-sexe"><option value="">—</option><option value="M">Masculin</option><option value="F">Féminin</option></select></div>
-          <div class="form-group"><label class="form-label">Date naissance</label><input class="form-input" id="a-ddn" type="date"></div>
+          <div class="form-group"><label class="form-label">Date naissance</label>
+            <input class="form-input" id="a-ddn" type="date" onclick="this.showPicker&&this.showPicker()">
+            <div class="form-hint">📅 Cliquez sur la date en haut à gauche du champ pour ouvrir le calendrier et choisir rapidement</div>
+          </div>
         </div>
         <div class="form-group"><label class="form-label">N° CNI / Passeport *</label><input class="form-input" id="a-cni" placeholder="Ex: 123456789"></div>
         <div class="divider"></div>
@@ -305,7 +309,7 @@ body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-he
     <div class="nav-tab" onclick="goTo('histoScreen')"><div class="nav-icon">📋</div><div class="nav-label">Historique</div></div>
     <div class="nav-tab" onclick="goTo('creditScreen')"><div class="nav-icon">💳</div><div class="nav-label">Crédit</div></div>
     <div class="nav-tab" onclick="goTo('profilScreen')"><div class="nav-icon">👤</div><div class="nav-label">Profil</div></div>
-    <div class="nav-tab" onclick="switchTab('insc');showScreen('loginScreen')"><div class="nav-icon">✍️</div><div class="nav-label">Adhésion</div></div>
+    <div class="nav-tab" onclick="actualiserCompte()"><div class="nav-icon" id="refreshIcon">🔄</div><div class="nav-label">Actualiser</div></div>
   </div>
   <div style="text-align:center;padding:3px 0 2px;background:#fff;font-size:9px;color:var(--muted);border-top:1px solid var(--border)">v1.0 — NFS CAMEROON</div>
 </div>
@@ -388,7 +392,10 @@ body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-he
 
     <!-- CASH options -->
     <div id="retrait-cash-opts">
-      <div class="form-group"><label class="form-label">📅 Date souhaitée</label><input class="form-input" id="retraitDate" type="date"></div>
+      <div class="form-group"><label class="form-label">📅 Date souhaitée</label>
+        <input class="form-input" id="retraitDate" type="date" onclick="this.showPicker&&this.showPicker()">
+        <div class="form-hint">Cliquez sur la date en haut à gauche du champ pour ouvrir le calendrier et choisir rapidement</div>
+      </div>
       <div class="form-group"><label class="form-label">🕐 Tranche horaire</label>
         <select class="form-select" id="retraitHoraire">
           <option value="08h-10h">08h00 – 10h00</option>
@@ -494,7 +501,7 @@ body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-he
     <div class="nav-tab" onclick="goTo('histoScreen')"><div class="nav-icon">📋</div><div class="nav-label">Historique</div></div>
     <div class="nav-tab active"><div class="nav-icon">💳</div><div class="nav-label">Crédit</div></div>
     <div class="nav-tab" onclick="goTo('profilScreen')"><div class="nav-icon">👤</div><div class="nav-label">Profil</div></div>
-    <div class="nav-tab" onclick="switchTab('insc');showScreen('loginScreen')"><div class="nav-icon">✍️</div><div class="nav-label">Adhésion</div></div>
+    <div class="nav-tab" onclick="actualiserCompte()"><div class="nav-icon" id="refreshIcon">🔄</div><div class="nav-label">Actualiser</div></div>
   </div>
 </div>
 
@@ -507,7 +514,7 @@ body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-he
     <div class="nav-tab active"><div class="nav-icon">📋</div><div class="nav-label">Historique</div></div>
     <div class="nav-tab" onclick="goTo('creditScreen')"><div class="nav-icon">💳</div><div class="nav-label">Crédit</div></div>
     <div class="nav-tab" onclick="goTo('profilScreen')"><div class="nav-icon">👤</div><div class="nav-label">Profil</div></div>
-    <div class="nav-tab" onclick="switchTab('insc');showScreen('loginScreen')"><div class="nav-icon">✍️</div><div class="nav-label">Adhésion</div></div>
+    <div class="nav-tab" onclick="actualiserCompte()"><div class="nav-icon" id="refreshIcon">🔄</div><div class="nav-label">Actualiser</div></div>
   </div>
 </div>
 
@@ -549,7 +556,7 @@ body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-he
     <div class="nav-tab" onclick="goTo('histoScreen')"><div class="nav-icon">📋</div><div class="nav-label">Historique</div></div>
     <div class="nav-tab" onclick="goTo('creditScreen')"><div class="nav-icon">💳</div><div class="nav-label">Crédit</div></div>
     <div class="nav-tab active"><div class="nav-icon">👤</div><div class="nav-label">Profil</div></div>
-    <div class="nav-tab" onclick="switchTab('insc');showScreen('loginScreen')"><div class="nav-icon">✍️</div><div class="nav-label">Adhésion</div></div>
+    <div class="nav-tab" onclick="actualiserCompte()"><div class="nav-icon" id="refreshIcon">🔄</div><div class="nav-label">Actualiser</div></div>
   </div>
 </div>
 
@@ -602,7 +609,7 @@ body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-he
 <script>
 // ── GAS SYNC ──────────────────────────────────────────────────
 // ── GOOGLE APPS SCRIPT SYNC ───────────────────────────────────
-const GAS_URL = "https://script.google.com/macros/s/AKfycby_SNFYilTrCjyCAP-q-EF1C-TjdyniXpCvU07N6UD3RR4Y6zqfxq16OYQo3lZjKxZN/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbx-Ipbxr_bknzl6DzqSbGeLti1I9YPXXr-KZtcvmDJm2WrLlpM9w4OjR9pX8aV-RiYP/exec";
 
 // GET via JSONP (contourne CORS)
 function gasGet(table) {
@@ -955,8 +962,7 @@ async function demanderOp(type){
   const capturedMotif = motif;
   const capturedModeInfo = modeInfo;
 
-  // PIN désactivé temporairement — exécution directe
-  (async () => {
+  openPinModal('🔐 Confirmer la demande', 'Entrez votre PIN personnel pour valider cette demande', async () => {
       // Pièce jointe optionnelle
       let preuveUrl = null;
       if(capturedType==='DEPOT'){
@@ -999,6 +1005,26 @@ async function demanderOp(type){
       lsSet('nfs_transactions', txs);
       gasPush('nfs_transactions', tx);
 
+      // Email de confirmation de réception
+      if(ME.email){
+        let modeLabel = '';
+        if(capturedModeInfo){
+          if(capturedModeInfo.mode==='CASH') modeLabel = 'Retrait en agence (' + (capturedModeInfo.agence||'—') + ')';
+          else if(capturedModeInfo.mode==='ORANGE_MONEY') modeLabel = 'Orange Money';
+          else if(capturedModeInfo.mode==='MTN_MONEY') modeLabel = 'MTN Mobile Money';
+          else if(capturedModeInfo.mode==='VIREMENT_BANCAIRE') modeLabel = 'Virement bancaire';
+        }
+        gasPost({
+          action: 'sendNotificationEmail',
+          email: ME.email,
+          nom: ME.nom,
+          prenom: ME.prenom,
+          type: capturedType,
+          details: { montant: fmtN(capturedMontant), compte: capturedCompte, motif: capturedMotif, mode: modeLabel },
+          ref: tx.id
+        });
+      }
+
       // Reset formulaire
       const montantEl = document.getElementById(montantId);
       const dispEl = document.getElementById(dispId);
@@ -1018,7 +1044,7 @@ async function demanderOp(type){
       `Votre demande de ${type.toLowerCase()} de ${fmt(montant)} sur Compte ${compte} a été transmise. ${modeMsg}`,
       'Réf : '+tx.id);
     toast('📨 Demande transmise','ok');
-  })();
+  });
 }
 
 // ── VIREMENT ─────────────────────────────────────────────────
@@ -1037,8 +1063,7 @@ function demanderVirement(){
   if(ti<0) return toast('Bénéficiaire introuvable','err');
   const solde=fromC==='CC'?(parseFloat(ME.soldeCC)||0):(parseFloat(ME.soldeEP)||0);
   if(montant>solde) return toast('Solde '+fromC+' insuffisant : '+fmt(solde),'err');
-  // PIN désactivé temporairement
-  (()=>{
+  openPinModal('🔐 Confirmer le virement', 'Entrez votre PIN personnel pour valider ce virement', ()=>{
     const fi=membres.findIndex(m=>m.id===ME.id);
     if(fromC==='CC') membres[fi].soldeCC=(parseFloat(membres[fi].soldeCC)||0)-montant;
     else membres[fi].soldeEP=(parseFloat(membres[fi].soldeEP)||0)-montant;
@@ -1052,33 +1077,175 @@ function demanderVirement(){
     lsSet('nfs_membres',membres);lsSet('nfs_transactions',txs);
     gasPush('nfs_membres',membres[fi]);gasPush('nfs_membres',membres[ti]);
     gasPush('nfs_transactions',tx1);gasPush('nfs_transactions',tx2);
+
+    // Email de confirmation
+    if(ME.email){
+      gasPost({
+        action: 'sendNotificationEmail',
+        email: ME.email, nom: ME.nom, prenom: ME.prenom,
+        type: 'VIREMENT',
+        details: { montant: fmtN(montant), beneficiaire: membres[ti].nom+' '+membres[ti].prenom },
+        ref: tx1.id
+      });
+    }
+
     document.getElementById('virMontant').value='';document.getElementById('virTo').value='';document.getElementById('virToName').textContent='';
     showSuccess('✅','Virement effectué !',`${fmt(montant)} envoyé à ${membres[ti].nom} ${membres[ti].prenom} (${toC})`,'Réf : '+tx1.id);
-  })();
+  });
 }
 
 // ── CREDIT ───────────────────────────────────────────────────
+// ── CALCUL DÉTAILLÉ D'UN CRÉDIT ───────────────────────────────
+// Retourne toutes les métriques nécessaires pour l'affichage membre & admin
+function calculCredit(cr){
+  const M = parseFloat(cr.montant) || 0;
+  const taux = parseFloat(cr.taux) || 0;
+  const duree = parseInt(cr.duree) || 0;
+  const mensualite = parseFloat(cr.mensualite) || 0;
+  const rembourse = parseFloat(cr.rembourse) || 0;
+  const r = taux / 100;
+
+  // Date de départ du crédit = date d'approbation (ou date de création si pas encore approuvé)
+  const dateDebut = new Date(cr.dateApprobation || cr.date || isoDay());
+
+  // Nombre de mensualités effectivement payées (basé sur le montant remboursé)
+  const mensualitesPayees = mensualite > 0 ? Math.floor(rembourse / mensualite) : 0;
+  const mensualitesRestantes = Math.max(0, duree - mensualitesPayees);
+  const capitalRestant = Math.max(0, (mensualite * duree) - rembourse);
+
+  // Nombre de mensualités qui DEVRAIENT être payées à ce jour (1 par mois depuis le début)
+  const now = new Date();
+  const moisEcoules = Math.max(0, Math.floor((now - dateDebut) / (30.44 * 86400000)));
+  const mensualitesDues = Math.min(duree, moisEcoules);
+  const mensualitesImpayees = Math.max(0, mensualitesDues - mensualitesPayees);
+  const montantImpaye = mensualitesImpayees * mensualite;
+
+  // Date de la dernière échéance payée
+  let dateDerniereEcheance = '—';
+  if(mensualitesPayees > 0){
+    const d = new Date(dateDebut);
+    d.setMonth(d.getMonth() + mensualitesPayees);
+    dateDerniereEcheance = d.toLocaleDateString('fr-FR');
+  }
+
+  // Date de la prochaine échéance
+  let dateProchaineEcheance = '—';
+  if(mensualitesRestantes > 0){
+    const d = new Date(dateDebut);
+    d.setMonth(d.getMonth() + mensualitesPayees + 1);
+    dateProchaineEcheance = d.toLocaleDateString('fr-FR');
+  }
+
+  const pct = duree > 0 ? Math.min(100, Math.round((rembourse / (mensualite * duree)) * 100)) : 0;
+  const enRetard = mensualitesImpayees > 0;
+
+  // Remboursement anticipé : capital restant + intérêts du mois en cours (pas de pénalité ajoutée par défaut)
+  const remboursementAnticipe = capitalRestant;
+
+  return {
+    montantInitial: M,
+    taux, duree, mensualite,
+    mensualitesPayees, mensualitesRestantes, mensualitesDues, mensualitesImpayees,
+    capitalRestant, montantImpaye, remboursementAnticipe,
+    rembourse, pct, enRetard,
+    dateDerniereEcheance, dateProchaineEcheance,
+    dateDebut: dateDebut.toLocaleDateString('fr-FR')
+  };
+}
+
 function renderCreditScreen(){
   const credits=getCredits().filter(c=>c.membreId===ME.id);
   const enCours=credits.filter(c=>c.statut==='encours');
-  document.getElementById('creditSuivi').innerHTML=enCours.length
-    ?`<div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:10px">📊 Mes crédits en cours</div>`+
+
+  document.getElementById('creditSuivi').innerHTML = enCours.length
+    ? `<div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:10px">📊 Mes crédits en cours (${enCours.length})</div>` +
       enCours.map(c=>{
-        const pct=Math.min(100,Math.round((parseFloat(c.rembourse)||0)/(c.mensualite*c.duree)*100));
-        const restant=c.duree-Math.round((parseFloat(c.rembourse)||0)/c.mensualite);
-        return `<div class="credit-card" style="margin-bottom:10px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-            <div><div style="font-size:10px;color:var(--gold);font-weight:700">${c.id}</div><div style="font-size:15px;font-weight:800">${fmt(c.montant)}</div></div>
-            <div style="text-align:right"><div style="font-size:11px;color:var(--muted)">Taux : ${c.taux}%/mois</div><div style="font-size:12px;font-weight:700;color:var(--blue)">Mens. : ${fmt(c.mensualite)}</div></div>
+        const k = calculCredit(c);
+        return `<div class="credit-card" style="margin-bottom:14px;border:1px solid ${k.enRetard?'#FCA5A5':'var(--border)'}">
+          <div style="display:flex;justify-content:space-between;margin-bottom:10px">
+            <div>
+              <div style="font-size:10px;color:var(--gold);font-weight:700">${c.id}</div>
+              <div style="font-size:16px;font-weight:800">${fmt(k.montantInitial)}</div>
+              <div style="font-size:10px;color:var(--muted)">Objet : ${c.objet||'—'}</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:11px;color:var(--muted)">Taux : ${k.taux}%/mois</div>
+              <div style="font-size:13px;font-weight:700;color:var(--blue)">Mens. : ${fmt(k.mensualite)}</div>
+              ${k.enRetard?'<div style="font-size:10px;color:var(--red);font-weight:700;margin-top:2px">⚠️ EN RETARD</div>':''}
+            </div>
           </div>
-          <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-          <div style="display:flex;justify-content:space-between;font-size:10px">
-            <span class="text-green fw7">${fmt(c.rembourse||0)} remboursé</span>
-            <span style="color:var(--muted)">${pct}% · ${restant>0?restant+' mens. restantes':'Soldé'}</span>
+
+          <div class="progress-bar"><div class="progress-fill" style="width:${k.pct}%"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:10px">
+            <span class="text-green fw7">${fmt(k.rembourse)} remboursé</span>
+            <span style="color:var(--muted)">${k.pct}%</span>
           </div>
-          <div style="margin-top:6px;font-size:11px;color:var(--muted)">Objet : ${c.objet||'—'}</div>
-        </div>`;}).join('')
-    :'';
+
+          <div style="background:#F8FAFC;border-radius:10px;padding:10px 12px;font-size:11px;display:grid;grid-template-columns:1fr 1fr;gap:6px 12px">
+            <div><span style="color:var(--muted)">Capital initial</span><br><b>${fmt(k.montantInitial)}</b></div>
+            <div><span style="color:var(--muted)">Capital restant</span><br><b class="text-red">${fmt(k.capitalRestant)}</b></div>
+            <div><span style="color:var(--muted)">Mensualités totales</span><br><b>${k.duree}</b></div>
+            <div><span style="color:var(--muted)">Mensualités restantes</span><br><b>${k.mensualitesRestantes}</b></div>
+            <div><span style="color:var(--muted)">Dernière échéance payée</span><br><b>${k.dateDerniereEcheance}</b></div>
+            <div><span style="color:var(--muted)">Prochaine échéance</span><br><b>${k.dateProchaineEcheance}</b></div>
+            ${k.enRetard?`
+            <div style="grid-column:1/-1;background:#FEF2F2;border-radius:8px;padding:8px;margin-top:4px">
+              <span style="color:var(--red);font-weight:700">⚠️ ${k.mensualitesImpayees} échéance(s) impayée(s)</span><br>
+              <span style="color:var(--red)">Montant total impayé : <b>${fmt(k.montantImpaye)}</b></span>
+            </div>`:''}
+          </div>
+
+          <button class="main-btn" style="margin-top:10px;background:var(--navy);font-size:12px;padding:9px"
+            onclick="toggleAnticipe('${c.id}')">🧮 Simuler un remboursement anticipé</button>
+          <div id="anticipe-${c.id}" style="display:none;margin-top:8px;background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:10px;font-size:12px">
+            <div style="display:flex;justify-content:space-between;padding:2px 0">
+              <span style="color:var(--muted)">Montant à verser aujourd'hui</span>
+              <span class="fw7" style="color:var(--gold)">${fmt(k.remboursementAnticipe)}</span>
+            </div>
+            <div style="font-size:10px;color:var(--muted);margin-top:4px">Ce montant correspond au capital restant dû à la date de ce jour. Contactez l'administrateur pour finaliser le remboursement anticipé.</div>
+          </div>
+        </div>`;
+      }).join('')
+    : '<div style="text-align:center;padding:16px;color:var(--muted);font-size:12px">Aucun crédit en cours</div>';
+}
+
+// ── ACTUALISATION MANUELLE DU COMPTE ──────────────────────────
+async function actualiserCompte(){
+  const icon = document.getElementById('refreshIcon');
+  if(icon) icon.style.animation = 'spin 0.8s linear infinite';
+  toast('Actualisation en cours...');
+
+  try{
+    await Promise.all([
+      gasPull('nfs_membres','nfs_membres'),
+      gasPull('nfs_transactions','nfs_transactions'),
+      gasPull('nfs_credits','nfs_credits'),
+      gasPull('nfs_agences','nfs_agences'),
+    ]);
+    if(ME){
+      const fresh = getMembres().find(m=>m.id===ME.id);
+      if(fresh) ME = fresh;
+    }
+    // Rafraîchir l'écran actuellement affiché
+    const active = document.querySelector('.screen.active');
+    if(active){
+      const id = active.id;
+      if(id==='homeScreen') renderHome();
+      else if(id==='histoScreen') renderHisto();
+      else if(id==='creditScreen') renderCreditScreen();
+      else if(id==='profilScreen') renderProfil();
+    }
+    toast('✅ Compte actualisé','ok');
+  }catch(e){
+    toast('Erreur lors de l\'actualisation','err');
+  }finally{
+    if(icon) icon.style.animation = '';
+  }
+}
+
+function toggleAnticipe(crId){
+  const el = document.getElementById('anticipe-'+crId);
+  if(el) el.style.display = el.style.display==='none' ? 'block' : 'none';
 }
 function simulateurCredit(){
   const M=parseFloat(document.getElementById('simMontant').value)||0;
@@ -1092,7 +1259,7 @@ function simulateurCredit(){
   document.getElementById('simCout').textContent=fmt(Math.round(total-M));
   document.getElementById('simResult').style.display='block';
 }
-async function demandeCredit(){
+function demandeCredit(){
   const M = parseFloat(document.getElementById('crMontant').value);
   const n = parseInt(document.getElementById('crDuree').value);
   const objet = document.getElementById('crObjet').value.trim();
@@ -1100,47 +1267,60 @@ async function demandeCredit(){
   if(!M || !n) return toast('Montant et durée requis','err');
   if(!objet) return toast('Objet du crédit requis','err');
 
-  // Uploader la garantie si présente (non bloquant niveau UX mais on attend le résultat)
-  const hasPV = document.getElementById('crGarantiePhotoVideo')?.files?.[0];
-  const hasDoc = document.getElementById('crGarantieDoc')?.files?.[0];
+  openPinModal('🔐 Confirmer la demande', 'Entrez votre PIN personnel pour soumettre ce dossier de crédit', async () => {
+    // Uploader la garantie si présente
+    const hasPV = document.getElementById('crGarantiePhotoVideo')?.files?.[0];
+    const hasDoc = document.getElementById('crGarantieDoc')?.files?.[0];
 
-  let garantieUrl = '';
-  if(hasPV || hasDoc){
-    toast('Envoi de la garantie en cours...');
-    const ts = Date.now();
-    if(hasPV){
-      garantieUrl = await gasUploadFile('crGarantiePhotoVideo', 'GARANTIE_'+ME.id+'_'+ts, 'Garanties crédit') || '';
-    } else if(hasDoc){
-      garantieUrl = await gasUploadFile('crGarantieDoc', 'GARANTIE_DOC_'+ME.id+'_'+ts, 'Garanties crédit') || '';
+    let garantieUrl = '';
+    if(hasPV || hasDoc){
+      toast('Envoi de la garantie en cours...');
+      const ts = Date.now();
+      if(hasPV){
+        garantieUrl = await gasUploadFile('crGarantiePhotoVideo', 'GARANTIE_'+ME.id+'_'+ts, 'Garanties crédit') || '';
+      } else if(hasDoc){
+        garantieUrl = await gasUploadFile('crGarantieDoc', 'GARANTIE_DOC_'+ME.id+'_'+ts, 'Garanties crédit') || '';
+      }
     }
-  }
 
-  const credits = getCredits();
-  const cr = {
-    id: 'CR-'+String(credits.length+1).padStart(7,'0'),
-    membreId: ME.id,
-    montant: M,
-    duree: n,
-    objet,
-    garantie: garantieTxt,
-    garantieUrl: garantieUrl,
-    statut: 'attente',
-    date: isoDay(),
-    rembourse: 0
-    // taux et mensualite seront définis par l'administrateur à l'approbation
-  };
-  credits.push(cr);
-  lsSet('nfs_credits', credits);
-  gasPush('nfs_credits', cr);
+    const credits = getCredits();
+    const cr = {
+      id: 'CR-'+String(credits.length+1).padStart(7,'0'),
+      membreId: ME.id,
+      montant: M,
+      duree: n,
+      objet,
+      garantie: garantieTxt,
+      garantieUrl: garantieUrl,
+      statut: 'attente',
+      date: isoDay(),
+      rembourse: 0
+      // taux et mensualite seront définis par l'administrateur à l'approbation
+    };
+    credits.push(cr);
+    lsSet('nfs_credits', credits);
+    gasPush('nfs_credits', cr);
 
-  document.getElementById('crMontant').value='';
-  document.getElementById('crObjet').value='';
-  document.getElementById('crGarantie').value='';
-  try{ clearRecu('crGarantiePhotoVideo','crGarantiePreview',null); }catch(e){}
+    // Email de confirmation
+    if(ME.email){
+      gasPost({
+        action: 'sendNotificationEmail',
+        email: ME.email, nom: ME.nom, prenom: ME.prenom,
+        type: 'CREDIT',
+        details: { montant: fmtN(M), duree: n, objet: objet },
+        ref: cr.id
+      });
+    }
 
-  showSuccess('📩','Demande envoyée !',
-    'Votre dossier de crédit pour '+fmt(M)+' est en attente d\'étude. Le taux et les modalités vous seront communiqués après validation.',
-    'Dossier : '+cr.id);
+    document.getElementById('crMontant').value='';
+    document.getElementById('crObjet').value='';
+    document.getElementById('crGarantie').value='';
+    try{ clearRecu('crGarantiePhotoVideo','crGarantiePreview',null); }catch(e){}
+
+    showSuccess('📩','Demande envoyée !',
+      'Votre dossier de crédit pour '+fmt(M)+' est en attente d\'étude. Le taux et les modalités vous seront communiqués après validation.',
+      'Dossier : '+cr.id);
+  });
 }
 
 // ── HISTORIQUE ───────────────────────────────────────────────
@@ -1239,6 +1419,18 @@ async function submitAdhesion(){
   demandes.push(d);
   lsSet('nfs_demandes', demandes);
   gasPush('nfs_demandes', d);
+
+  // Email de confirmation de réception de la demande d'adhésion
+  const emailVal = document.getElementById('a-email').value.trim();
+  if(emailVal){
+    gasPost({
+      action: 'sendNotificationEmail',
+      email: emailVal, nom: nom, prenom: prenom,
+      type: 'ADHESION',
+      details: { tel: tel, profession: profession, produits: produits.join(', ') },
+      ref: ref
+    });
+  }
 
   // Afficher le succès immédiatement
   showSuccess('🎉', 'Demande envoyée !',
@@ -1385,7 +1577,7 @@ function getRetraitModeInfo(){
 
 // ── MISE À JOUR APPLICATION ───────────────────────────────────
 const APP_VERSION = '1.0';
-const APP_VERSION_URL = 'https://script.google.com/macros/s/AKfycby_SNFYilTrCjyCAP-q-EF1C-TjdyniXpCvU07N6UD3RR4Y6zqfxq16OYQo3lZjKxZN/exec?action=get&table=nfs_versions&t=';
+const APP_VERSION_URL = 'https://script.google.com/macros/s/AKfycbx-Ipbxr_bknzl6DzqSbGeLti1I9YPXXr-KZtcvmDJm2WrLlpM9w4OjR9pX8aV-RiYP/exec?action=get&table=nfs_versions&t=';
 
 async function checkUpdate(){
   try {
