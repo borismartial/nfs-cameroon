@@ -1317,21 +1317,7 @@ function accepterDemande(ref){
     const m={id,ccId:'CC-'+id.slice(4),epId:'EP-'+id.slice(4),nom:d.nom,prenom:d.prenom,tel:d.tel,email:d.email||'',adresse:d.adresse,profession:d.profession,agence:d.agence||'AG01',soldeCC:0,soldeEP:0,pin:pinInit,pinAChanger:true,statut:'actif',dateAdhesion:isoDay(),derniereOp:isoDay()};
     S.membres.push(m);d.statut='acceptee';d.membreId=id;
     lsSave();gasPush('nfs_membres',m);gasPush('nfs_demandes',d);
-
-    // Envoyer l'email de bienvenue avec identifiants
-    if(d.email){
-      gasPost({
-        action: 'sendWelcomeEmail',
-        email: d.email,
-        nom: d.nom,
-        prenom: d.prenom,
-        memberId: id,
-        pin: pinInit
-      });
-      toast('Demande acceptée — '+id+' créé. Email envoyé à '+d.email,'ok');
-    } else {
-      toast('Demande acceptée — '+id+' créé (PIN provisoire: '+pinInit+'). Aucun email renseigné.','ok');
-    }
+    toast('Demande acceptée — '+id+' créé (PIN provisoire: '+pinInit+')','ok');
     renderDemandes();
   });
 }

@@ -1009,26 +1009,6 @@ async function demanderOp(type){
       lsSet('nfs_transactions', txs);
       gasPush('nfs_transactions', tx);
 
-      // Email de confirmation de réception
-      if(ME.email){
-        let modeLabel = '';
-        if(capturedModeInfo){
-          if(capturedModeInfo.mode==='CASH') modeLabel = 'Retrait en agence (' + (capturedModeInfo.agence||'—') + ')';
-          else if(capturedModeInfo.mode==='ORANGE_MONEY') modeLabel = 'Orange Money';
-          else if(capturedModeInfo.mode==='MTN_MONEY') modeLabel = 'MTN Mobile Money';
-          else if(capturedModeInfo.mode==='VIREMENT_BANCAIRE') modeLabel = 'Virement bancaire';
-        }
-        gasPost({
-          action: 'sendNotificationEmail',
-          email: ME.email,
-          nom: ME.nom,
-          prenom: ME.prenom,
-          type: capturedType,
-          details: { montant: fmtN(capturedMontant), compte: capturedCompte, motif: capturedMotif, mode: modeLabel },
-          ref: tx.id
-        });
-      }
-
       // Reset formulaire
       const montantEl = document.getElementById(montantId);
       const dispEl = document.getElementById(dispId);
@@ -1087,17 +1067,6 @@ function demanderVirement(){
     lsSet('nfs_membres',membres);lsSet('nfs_transactions',txs);
     gasPush('nfs_membres',membres[fi]);gasPush('nfs_membres',membres[ti]);
     gasPush('nfs_transactions',tx1);gasPush('nfs_transactions',tx2);
-
-    // Email de confirmation
-    if(ME.email){
-      gasPost({
-        action: 'sendNotificationEmail',
-        email: ME.email, nom: ME.nom, prenom: ME.prenom,
-        type: 'VIREMENT',
-        details: { montant: fmtN(montant), beneficiaire: membres[ti].nom+' '+membres[ti].prenom },
-        ref: tx1.id
-      });
-    }
 
     document.getElementById('virMontant').value='';document.getElementById('virTo').value='';document.getElementById('virToName').textContent='';
     showSuccess('✅','Virement effectué !',`${fmt(montant)} envoyé à ${membres[ti].nom} ${membres[ti].prenom} (${toC})`,'Réf : '+tx1.id);
@@ -1312,17 +1281,6 @@ function demandeCredit(){
     lsSet('nfs_credits', credits);
     gasPush('nfs_credits', cr);
 
-    // Email de confirmation
-    if(ME.email){
-      gasPost({
-        action: 'sendNotificationEmail',
-        email: ME.email, nom: ME.nom, prenom: ME.prenom,
-        type: 'CREDIT',
-        details: { montant: fmtN(M), duree: n, objet: objet },
-        ref: cr.id
-      });
-    }
-
     document.getElementById('crMontant').value='';
     document.getElementById('crObjet').value='';
     document.getElementById('crGarantie').value='';
@@ -1433,18 +1391,6 @@ async function submitAdhesion(){
   demandes.push(d);
   lsSet('nfs_demandes', demandes);
   gasPush('nfs_demandes', d);
-
-  // Email de confirmation de réception de la demande d'adhésion
-  const emailVal = document.getElementById('a-email').value.trim();
-  if(emailVal){
-    gasPost({
-      action: 'sendNotificationEmail',
-      email: emailVal, nom: nom, prenom: prenom,
-      type: 'ADHESION',
-      details: { tel: tel, profession: profession, produits: produits.join(', ') },
-      ref: ref
-    });
-  }
 
   // Afficher le succès immédiatement
   showSuccess('🎉', 'Demande envoyée !',
