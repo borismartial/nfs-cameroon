@@ -954,12 +954,13 @@ async function demanderOp(type){
   if(!montant || montant<=0) return toast('Montant invalide','err');
 
   // Vérifier la preuve de versement AVANT d'ouvrir la modal PIN (dépôt uniquement)
+  let hasFileInputId = null;
   if(type==='DEPOT'){
     const recuInput = document.getElementById('depotReçuInput');
     const camInput  = document.getElementById('depotCameraInput');
-    const hasFile   = (recuInput && recuInput.files && recuInput.files[0]) ||
-                      (camInput  && camInput.files  && camInput.files[0]);
-    if(!hasFile) return toast('La preuve de versement est obligatoire','err');
+    if(recuInput && recuInput.files && recuInput.files[0]) hasFileInputId = 'depotReçuInput';
+    else if(camInput && camInput.files && camInput.files[0]) hasFileInputId = 'depotCameraInput';
+    if(!hasFileInputId) return toast('La preuve de versement est obligatoire','err');
   }
 
   // Vérifier mode retrait
@@ -975,22 +976,11 @@ async function demanderOp(type){
   const capturedMontant = montant;
   const capturedMotif = motif;
   const capturedModeInfo = modeInfo;
+  const capturedFileInputId = hasFileInputId;
 
-  openPinModal('🔐 Confirmer la demande', 'Entrez votre PIN personnel pour valider cette demande', async () => {
+  openPinModal('🔐 Confirmer la demande', 'Entrez votre PIN personnel pour valider cette demande', () => {
     try {
-      // Upload de la preuve (dépôt uniquement)
-      let preuveUrl = null;
-      if(capturedType==='DEPOT'){
-        toast('Envoi de la preuve en cours...');
-        const recuInput = document.getElementById('depotReçuInput');
-        const camInput  = document.getElementById('depotCameraInput');
-        const inputId = (recuInput && recuInput.files && recuInput.files[0])
-          ? 'depotReçuInput' : 'depotCameraInput';
-        const nomFichier = 'PREUVE_' + ME.id + '_' + isoDay() + '_' + Date.now();
-        preuveUrl = await gasUploadFile(inputId, nomFichier, 'Preuves de versement');
-        if(!preuveUrl) preuveUrl = '[fichier joint — upload échoué]';
-      }
-
+      // Créer et sauvegarder la transaction IMMÉDIATEMENT (sans attendre l'upload)
       const txs = getTx();
       const tx = {
         id: uid(),
@@ -1003,7 +993,7 @@ async function demanderOp(type){
         date: isoDay(),
         dateAff: todayFr(),
         ...(capturedModeInfo ? {modeRetrait: JSON.stringify(capturedModeInfo)} : {}),
-        ...(preuveUrl ? {recu: preuveUrl} : {})
+        recu: ''
       };
       txs.push(tx);
       lsSet('nfs_transactions', txs);
@@ -1025,10 +1015,29 @@ async function demanderOp(type){
         else if(capturedModeInfo.mode==='VIREMENT_BANCAIRE') modeMsg = `Virement vers ${capturedModeInfo.banque} — ${capturedModeInfo.compte}.`;
       }
 
-      // Toujours afficher l'écran de succès (qui ramène à l'accueil)
+      // Afficher immédiatement l'écran de succès (ne dépend pas de l'upload)
       showSuccess('⏳','Demande envoyée !',
         `Votre demande de ${capturedType.toLowerCase()} de ${fmt(capturedMontant)} sur Compte ${capturedCompte} a été transmise. ${modeMsg}`,
         'Réf : '+tx.id);
+
+      // Upload de la preuve EN ARRIÈRE-PLAN (non-bloquant)
+      if(capturedFileInputId){
+        setTimeout(async () => {
+          try{
+            const nomFichier = 'PREUVE_' + ME.id + '_' + isoDay() + '_' + Date.now();
+            const preuveUrl = await gasUploadFile(capturedFileInputId, nomFichier, 'Preuves de versement');
+            if(preuveUrl){
+              const allTx = getTx();
+              const i = allTx.findIndex(t=>t.id===tx.id);
+              if(i>=0){
+                allTx[i].recu = preuveUrl;
+                lsSet('nfs_transactions', allTx);
+                gasPush('nfs_transactions', allTx[i]);
+              }
+            }
+          }catch(e){ console.error('Upload preuve échoué:', e); }
+        }, 300);
+      }
 
     } catch(err){
       console.error('Erreur demanderOp:', err);
@@ -1246,23 +1255,14 @@ function demandeCredit(){
   if(!M || !n) return toast('Montant et durée requis','err');
   if(!objet) return toast('Objet du crédit requis','err');
 
-  openPinModal('🔐 Confirmer la demande', 'Entrez votre PIN personnel pour soumettre ce dossier de crédit', async () => {
+  // Déterminer quel input garantie utiliser (capturé avant la modal)
+  const hasPV = document.getElementById('crGarantiePhotoVideo')?.files?.[0];
+  const hasDoc = document.getElementById('crGarantieDoc')?.files?.[0];
+  const garantieInputId = hasPV ? 'crGarantiePhotoVideo' : (hasDoc ? 'crGarantieDoc' : null);
+
+  openPinModal('🔐 Confirmer la demande', 'Entrez votre PIN personnel pour soumettre ce dossier de crédit', () => {
    try {
-    // Uploader la garantie si présente
-    const hasPV = document.getElementById('crGarantiePhotoVideo')?.files?.[0];
-    const hasDoc = document.getElementById('crGarantieDoc')?.files?.[0];
-
-    let garantieUrl = '';
-    if(hasPV || hasDoc){
-      toast('Envoi de la garantie en cours...');
-      const ts = Date.now();
-      if(hasPV){
-        garantieUrl = await gasUploadFile('crGarantiePhotoVideo', 'GARANTIE_'+ME.id+'_'+ts, 'Garanties crédit') || '';
-      } else if(hasDoc){
-        garantieUrl = await gasUploadFile('crGarantieDoc', 'GARANTIE_DOC_'+ME.id+'_'+ts, 'Garanties crédit') || '';
-      }
-    }
-
+    // Créer et sauvegarder le dossier IMMÉDIATEMENT (sans attendre l'upload)
     const credits = getCredits();
     const cr = {
       id: 'CR-'+String(credits.length+1).padStart(7,'0'),
@@ -1271,7 +1271,7 @@ function demandeCredit(){
       duree: n,
       objet,
       garantie: garantieTxt,
-      garantieUrl: garantieUrl,
+      garantieUrl: '',
       statut: 'attente',
       date: isoDay(),
       rembourse: 0
@@ -1289,6 +1289,28 @@ function demandeCredit(){
     showSuccess('📩','Demande envoyée !',
       'Votre dossier de crédit pour '+fmt(M)+' est en attente d\'étude. Le taux et les modalités vous seront communiqués après validation.',
       'Dossier : '+cr.id);
+
+    // Upload de la garantie EN ARRIÈRE-PLAN (non-bloquant)
+    if(garantieInputId){
+      setTimeout(async () => {
+        try{
+          const ts = Date.now();
+          const subfolder = 'Garanties crédit';
+          const prefix = garantieInputId==='crGarantiePhotoVideo' ? 'GARANTIE_' : 'GARANTIE_DOC_';
+          const garantieUrl = await gasUploadFile(garantieInputId, prefix+ME.id+'_'+ts, subfolder);
+          if(garantieUrl){
+            const allCr = getCredits();
+            const i = allCr.findIndex(c=>c.id===cr.id);
+            if(i>=0){
+              allCr[i].garantieUrl = garantieUrl;
+              lsSet('nfs_credits', allCr);
+              gasPush('nfs_credits', allCr[i]);
+            }
+          }
+        }catch(e){ console.error('Upload garantie échoué:', e); }
+      }, 300);
+    }
+
    } catch(err){
      console.error('Erreur demandeCredit:', err);
      toast('Une erreur est survenue, réessayez','err');
