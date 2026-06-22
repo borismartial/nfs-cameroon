@@ -888,9 +888,10 @@ async function validateMPin(){
   const mPin=String(ME.pin||'').trim();
   const demoPin=DEMO_PINS[ME.id]||'';
   if(pin===mPin||pin===demoPin){
-    closePinModal();
-    if(typeof pendingAction==='function'){
-      try { await pendingAction(); }
+    const actionToRun = pendingAction; // capturer AVANT de fermer la modal
+    closePinModal(); // celle-ci met pendingAction à null
+    if(typeof actionToRun==='function'){
+      try { await actionToRun(); }
       catch(e){ console.error('PIN action error:',e); toast('Erreur lors de la soumission','err'); }
     }
   } else {
