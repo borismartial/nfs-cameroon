@@ -674,6 +674,48 @@ async function gasPull(table, lsKey) {
   return true;
 }
 
+// Upload à partir d'un objet File déjà capturé en mémoire (robuste face à un reset du formulaire)
+async function gasUploadFileObj(file, fileName, subfolder) {
+  if (!file) return null;
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        let fileData = e.target.result;
+        if (file.type.startsWith('image/')) {
+          fileData = await compressImage(fileData, 700, 0.65);
+        }
+        const payload = JSON.stringify({
+          action: 'uploadFile',
+          fileName: fileName || file.name,
+          fileData: fileData,
+          mimeType: file.type || 'image/jpeg',
+          subfolder: subfolder || ''
+        });
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', GAS_URL, true);
+        xhr.setRequestHeader('Content-Type', 'text/plain');
+        xhr.timeout = 30000;
+        xhr.onload = () => {
+          try {
+            const j = JSON.parse(xhr.responseText);
+            if(j && j.ok && j.url){ resolve(j.url); }
+            else { console.warn('Upload GAS error:', j && j.error); resolve(null); }
+          } catch(e) {
+            console.warn('Upload response parse error:', xhr.responseText?.slice(0,200));
+            resolve(null);
+          }
+        };
+        xhr.onerror   = () => { console.warn('Upload XHR network error'); resolve(null); };
+        xhr.ontimeout = () => { console.warn('Upload XHR timeout (30s)'); resolve(null); };
+        xhr.send(payload);
+      } catch(err) { console.warn('Upload exception:', err); resolve(null); }
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+}
+
 async function gasUploadFile(inputId, fileName, subfolder) {
   const input = document.getElementById(inputId);
   if (!input || !input.files || !input.files[0]) return null;
@@ -986,6 +1028,8 @@ async function demanderOp(type){
   const capturedMotif = motif;
   const capturedModeInfo = modeInfo;
   const capturedFileInputId = hasFileInputId;
+  // Capturer le FICHIER lui-même (pas juste l'ID) — car clearRecu() videra l'input juste après
+  const capturedFile = hasFileInputId ? document.getElementById(hasFileInputId).files[0] : null;
 
   openPinModal('🔐 Confirmer la demande', 'Entrez votre PIN personnel pour valider cette demande', () => {
     try {
@@ -1030,11 +1074,11 @@ async function demanderOp(type){
         'Réf : '+tx.id);
 
       // Upload de la preuve EN ARRIÈRE-PLAN (non-bloquant)
-      if(capturedFileInputId){
+      if(capturedFile){
         setTimeout(async () => {
           try{
             const nomFichier = 'PREUVE_' + ME.id + '_' + isoDay() + '_' + Date.now();
-            const preuveUrl = await gasUploadFile(capturedFileInputId, nomFichier, 'Preuves de versement');
+            const preuveUrl = await gasUploadFileObj(capturedFile, nomFichier, 'Preuves de versement');
             if(preuveUrl){
               const allTx = getTx();
               const i = allTx.findIndex(t=>t.id===tx.id);
@@ -1264,10 +1308,11 @@ function demandeCredit(){
   if(!M || !n) return toast('Montant et durée requis','err');
   if(!objet) return toast('Objet du crédit requis','err');
 
-  // Déterminer quel input garantie utiliser (capturé avant la modal)
+  // Capturer le FICHIER lui-même AVANT la modal (clearRecu videra l'input juste après validation)
   const hasPV = document.getElementById('crGarantiePhotoVideo')?.files?.[0];
   const hasDoc = document.getElementById('crGarantieDoc')?.files?.[0];
   const garantieInputId = hasPV ? 'crGarantiePhotoVideo' : (hasDoc ? 'crGarantieDoc' : null);
+  const capturedGarantieFile = hasPV || hasDoc || null;
 
   openPinModal('🔐 Confirmer la demande', 'Entrez votre PIN personnel pour soumettre ce dossier de crédit', () => {
    try {
@@ -1299,14 +1344,14 @@ function demandeCredit(){
       'Votre dossier de crédit pour '+fmt(M)+' est en attente d\'étude. Le taux et les modalités vous seront communiqués après validation.',
       'Dossier : '+cr.id);
 
-    // Upload de la garantie EN ARRIÈRE-PLAN (non-bloquant)
-    if(garantieInputId){
+    // Upload de la garantie EN ARRIÈRE-PLAN (non-bloquant) — utilise le fichier capturé en mémoire
+    if(capturedGarantieFile){
       setTimeout(async () => {
         try{
           const ts = Date.now();
           const subfolder = 'Garanties crédit';
           const prefix = garantieInputId==='crGarantiePhotoVideo' ? 'GARANTIE_' : 'GARANTIE_DOC_';
-          const garantieUrl = await gasUploadFile(garantieInputId, prefix+ME.id+'_'+ts, subfolder);
+          const garantieUrl = await gasUploadFileObj(capturedGarantieFile, prefix+ME.id+'_'+ts, subfolder);
           if(garantieUrl){
             const allCr = getCredits();
             const i = allCr.findIndex(c=>c.id===cr.id);
