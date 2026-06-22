@@ -702,13 +702,21 @@ async function gasUploadFile(inputId, fileName, subfolder) {
         xhr.onload = () => {
           try {
             const j = JSON.parse(xhr.responseText);
-            resolve(j.ok && j.url ? j.url : 'uploaded');
-          } catch(e) { resolve('uploaded'); }
+            if(j && j.ok && j.url){
+              resolve(j.url);
+            } else {
+              console.warn('Upload GAS error:', j && j.error);
+              resolve(null);
+            }
+          } catch(e) {
+            console.warn('Upload response parse error. Raw response:', xhr.responseText?.slice(0,200));
+            resolve(null);
+          }
         };
-        xhr.onerror   = () => resolve(null);
-        xhr.ontimeout = () => resolve(null);
+        xhr.onerror   = () => { console.warn('Upload XHR network error'); resolve(null); };
+        xhr.ontimeout = () => { console.warn('Upload XHR timeout (30s)'); resolve(null); };
         xhr.send(payload);
-      } catch(err) { resolve(null); }
+      } catch(err) { console.warn('Upload exception:', err); resolve(null); }
     };
     reader.onerror = () => resolve(null);
     reader.readAsDataURL(file);
