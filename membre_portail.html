@@ -359,7 +359,10 @@ body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-he
       ℹ️ Votre demande sera soumise à l'approbation de l'administrateur avant débit de votre compte.
     </div>
     <div class="amount-display"><div class="lbl">Montant à retirer</div><div class="val" id="retraitDisp">0</div><div style="font-size:12px;color:var(--muted)">FCFA</div></div>
-    <div class="form-group"><label class="form-label">Compte à débiter</label><select class="form-select" id="retraitCompte"><option value="EP">Compte Épargne (EP)</option><option value="CC">Compte Courant (CC)</option></select></div>
+    <div class="form-group"><label class="form-label">Compte à débiter</label>
+      <select class="form-select" id="retraitCompte" onchange="updateRetraitSolde()"><option value="EP">Compte Épargne (EP)</option><option value="CC">Compte Courant (CC)</option></select>
+      <div id="retraitSoldeCompte" style="font-size:12px;color:var(--blue);font-weight:600;margin-top:5px"></div>
+    </div>
     <div class="form-group"><label class="form-label">Montant (FCFA) *</label><input class="form-input" id="retraitMontant" type="number" min="1" placeholder="Ex: 20 000" oninput="document.getElementById('retraitDisp').textContent=fmtN(this.value)"></div>
     <div class="form-group"><label class="form-label">Motif</label><input class="form-input" id="retraitMotif" placeholder="Ex: Dépense"></div>
     <div id="retraitSolde" style="font-size:11px;color:var(--muted);margin-top:4px;margin-bottom:10px"></div>
@@ -423,9 +426,76 @@ body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-he
 
     <!-- VIREMENT options -->
     <div id="retrait-virement-opts" style="display:none">
-      <div class="form-group"><label class="form-label">🏦 Banque *</label><input class="form-input" id="retraitBanque" placeholder="Ex: Afriland First Bank, SCB..."></div>
-      <div class="form-group"><label class="form-label">N° de compte *</label><input class="form-input" id="retraitCompteNum" placeholder="Ex: 000 12345678 00"></div>
-      <div class="form-group"><label class="form-label">Titulaire du compte</label><input class="form-input" id="retraitCompteName" placeholder="Nom complet du titulaire"></div>
+      <div class="form-group">
+        <label class="form-label">🌍 Destination du virement</label>
+        <div style="display:flex;gap:8px">
+          <label onclick="toggleVirZone('cm')" id="virZone-cm" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border:2px solid var(--blue);border-radius:10px;cursor:pointer;background:#EFF6FF;font-size:12px;font-weight:600;color:var(--navy)">
+            <input type="radio" name="virZone" value="cm" checked style="display:none">🇨🇲 Au Cameroun
+          </label>
+          <label onclick="toggleVirZone('intl')" id="virZone-intl" style="flex:1;display:flex;align-items:center;justify-content:center;gap:6px;padding:10px;border:2px solid var(--border);border-radius:10px;cursor:pointer;font-size:12px;font-weight:600;color:var(--navy)">
+            <input type="radio" name="virZone" value="intl" style="display:none">🌍 Hors Cameroun
+          </label>
+        </div>
+      </div>
+
+      <!-- Virement AU CAMEROUN -->
+      <div id="vir-cm-opts">
+        <div class="form-group"><label class="form-label">🏦 Banque *</label>
+          <select class="form-select" id="retraitBanqueCM">
+            <option value="">— Sélectionner une banque —</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">N° de compte (RIB) *</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1.6fr 0.7fr;gap:6px">
+            <div>
+              <input class="form-input" id="ribCodeBanque" placeholder="10001" maxlength="5" inputmode="numeric" style="text-align:center">
+              <div class="form-hint" style="text-align:center">Code banque</div>
+            </div>
+            <div>
+              <input class="form-input" id="ribCodeAgence" placeholder="00001" maxlength="5" inputmode="numeric" style="text-align:center">
+              <div class="form-hint" style="text-align:center">Code agence</div>
+            </div>
+            <div>
+              <input class="form-input" id="ribNumCompte" placeholder="00012345678" maxlength="11" inputmode="numeric" style="text-align:center">
+              <div class="form-hint" style="text-align:center">N° de compte</div>
+            </div>
+            <div>
+              <input class="form-input" id="ribCle" placeholder="90" maxlength="2" inputmode="numeric" style="text-align:center">
+              <div class="form-hint" style="text-align:center">Clé RIB</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group"><label class="form-label">Titulaire du compte</label><input class="form-input" id="retraitCompteNameCM" placeholder="Nom complet du titulaire"></div>
+      </div>
+
+      <!-- Virement HORS CAMEROUN -->
+      <div id="vir-intl-opts" style="display:none">
+        <div class="form-group"><label class="form-label">🏦 Nom de la banque *</label><input class="form-input" id="retraitBanqueIntl" placeholder="Ex: BNP Paribas, Chase Bank..."></div>
+        <div class="form-group"><label class="form-label">🌍 Pays de la banque *</label><input class="form-input" id="retraitPaysIntl" placeholder="Ex: France, États-Unis, Canada..."></div>
+        <div class="form-group"><label class="form-label">IBAN / N° de compte *</label><input class="form-input" id="retraitIbanIntl" placeholder="Ex: FR76 XXXX XXXX XXXX XXXX XXXX XXX"></div>
+        <div class="form-group"><label class="form-label">Code SWIFT / BIC *</label><input class="form-input" id="retraitSwiftIntl" placeholder="Ex: BNPAFRPPXXX"></div>
+        <div class="form-group"><label class="form-label">Titulaire du compte</label><input class="form-input" id="retraitCompteNameIntl" placeholder="Nom complet du titulaire"></div>
+      </div>
+
+      <!-- RIB upload (commun aux deux) -->
+      <div class="form-group">
+        <label class="form-label">📎 RIB / Relevé d'identité bancaire (optionnel)</label>
+        <div style="background:#DBEAFE;border:1px solid #BFDBFE;border-radius:8px;padding:9px 11px;margin-bottom:8px;font-size:11px;color:#1D4ED8">
+          📌 Joignez une photo ou un document de votre RIB pour accélérer le traitement par l'administrateur.
+        </div>
+        <div style="display:flex;gap:8px">
+          <button type="button" onclick="document.getElementById('retraitRibCamera').click()" style="flex:1;padding:10px;background:#F8FAFC;border:1.5px dashed var(--border);border-radius:10px;font-size:12px;cursor:pointer;color:var(--navy)">📷 Caméra</button>
+          <button type="button" onclick="document.getElementById('retraitRibPhoto').click()" style="flex:1;padding:10px;background:#F8FAFC;border:1.5px dashed var(--border);border-radius:10px;font-size:12px;cursor:pointer;color:var(--navy)">🖼️ Galerie</button>
+          <button type="button" onclick="document.getElementById('retraitRibDoc').click()" style="flex:1;padding:10px;background:#F8FAFC;border:1.5px dashed var(--border);border-radius:10px;font-size:12px;cursor:pointer;color:var(--navy)">📄 Doc</button>
+        </div>
+        <input type="file" id="retraitRibCamera" accept="image/*" capture="environment" style="display:none" onchange="showRibPreview(this)">
+        <input type="file" id="retraitRibPhoto" accept="image/*" style="display:none" onchange="showRibPreview(this)">
+        <input type="file" id="retraitRibDoc" accept=".pdf,.doc,.docx,image/*" style="display:none" onchange="showRibPreview(this)">
+        <div id="retraitRibPreview" style="display:none;margin-top:8px;font-size:11px;color:var(--green);font-weight:600"></div>
+      </div>
     </div>
   </div>
   <div class="bottom-btn"><button class="main-btn orange" onclick="demanderOp('RETRAIT')">📤 Soumettre la demande</button></div>
@@ -484,9 +554,11 @@ body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-he
           📌 Joignez une photo, une vidéo ou un document justifiant votre garantie (titre foncier, attestation, etc.). Visible par l'administrateur lors de l'étude du dossier.
         </div>
         <div style="display:flex;gap:8px">
-          <button type="button" onclick="document.getElementById('crGarantiePhotoVideo').click()" style="flex:1;padding:10px;background:#F8FAFC;border:1.5px dashed var(--border);border-radius:10px;font-size:12px;cursor:pointer;color:var(--navy)">📷 Photo / 🎥 Vidéo</button>
-          <button type="button" onclick="document.getElementById('crGarantieDoc').click()" style="flex:1;padding:10px;background:#F8FAFC;border:1.5px dashed var(--border);border-radius:10px;font-size:12px;cursor:pointer;color:var(--navy)">📄 Document</button>
+          <button type="button" onclick="document.getElementById('crGarantieCamera').click()" style="flex:1;padding:10px;background:#F8FAFC;border:1.5px dashed var(--border);border-radius:10px;font-size:12px;cursor:pointer;color:var(--navy)">📷 Caméra</button>
+          <button type="button" onclick="document.getElementById('crGarantiePhotoVideo').click()" style="flex:1;padding:10px;background:#F8FAFC;border:1.5px dashed var(--border);border-radius:10px;font-size:12px;cursor:pointer;color:var(--navy)">🖼️ Galerie</button>
+          <button type="button" onclick="document.getElementById('crGarantieDoc').click()" style="flex:1;padding:10px;background:#F8FAFC;border:1.5px dashed var(--border);border-radius:10px;font-size:12px;cursor:pointer;color:var(--navy)">📄 Doc</button>
         </div>
+        <input type="file" id="crGarantieCamera" accept="image/*" capture="environment" style="display:none" onchange="showGarantiePreview(this)">
         <input type="file" id="crGarantiePhotoVideo" accept="image/*,video/*" style="display:none" onchange="showGarantiePreview(this)">
         <input type="file" id="crGarantieDoc" accept=".pdf,.doc,.docx,image/*" style="display:none" onchange="showGarantiePreview(this)">
         <div id="crGarantiePreview" style="display:none;margin-top:8px;font-size:11px;color:var(--green);font-weight:600"></div>
@@ -867,7 +939,7 @@ function goHome(){
 }
 function goTo(screen){
   if(!ME){showScreen('loginScreen');return;}
-  if(screen==='retraitScreen') document.getElementById('retraitSolde').textContent='Solde EP: '+fmt(ME.soldeEP||0)+' · Solde CC: '+fmt(ME.soldeCC||0);
+  if(screen==='retraitScreen') updateRetraitSolde();
   if(screen==='histoScreen') renderHisto();
   if(screen==='profilScreen') renderProfil();
   if(screen==='creditScreen') renderCreditScreen();
@@ -1030,6 +1102,11 @@ async function demanderOp(type){
   const capturedFileInputId = hasFileInputId;
   // Capturer le FICHIER lui-même (pas juste l'ID) — car clearRecu() videra l'input juste après
   const capturedFile = hasFileInputId ? document.getElementById(hasFileInputId).files[0] : null;
+  // Capturer le RIB si renseigné (mode virement bancaire)
+  const ribCamFile = document.getElementById('retraitRibCamera')?.files?.[0];
+  const ribPhotoFile = document.getElementById('retraitRibPhoto')?.files?.[0];
+  const ribDocFile = document.getElementById('retraitRibDoc')?.files?.[0];
+  const capturedRibFile = ribCamFile || ribPhotoFile || ribDocFile || null;
 
   openPinModal('🔐 Confirmer la demande', 'Entrez votre PIN personnel pour valider cette demande', () => {
     try {
@@ -1052,12 +1129,37 @@ async function demanderOp(type){
       lsSet('nfs_transactions', txs);
       gasPush('nfs_transactions', tx);
 
+      // Email de confirmation (non-bloquant)
+      if(ME.email){
+        let modeLabel = '';
+        if(capturedModeInfo){
+          if(capturedModeInfo.mode==='CASH') modeLabel = 'Retrait en agence';
+          else if(capturedModeInfo.mode==='ORANGE_MONEY') modeLabel = 'Orange Money';
+          else if(capturedModeInfo.mode==='MTN_MONEY') modeLabel = 'MTN Mobile Money';
+          else if(capturedModeInfo.mode==='VIREMENT_BANCAIRE') modeLabel = 'Virement bancaire';
+        }
+        gasPost({
+          action: 'sendNotificationEmail',
+          email: ME.email, nom: ME.nom, prenom: ME.prenom,
+          type: capturedType,
+          details: { montant: fmtN(capturedMontant), compte: capturedCompte, motif: capturedMotif, mode: modeLabel },
+          ref: tx.id
+        });
+      }
+
       // Reset formulaire
       const montantEl = document.getElementById(montantId);
       const dispEl = document.getElementById(dispId);
       if(montantEl) montantEl.value = '';
       if(dispEl) dispEl.textContent = '0';
       try { if(capturedType==='DEPOT') clearRecu('depotReçuInput','depotReçuPreview','depotReçuZone'); } catch(e){}
+      try {
+        if(document.getElementById('retraitRibCamera')) document.getElementById('retraitRibCamera').value='';
+        if(document.getElementById('retraitRibPhoto')) document.getElementById('retraitRibPhoto').value='';
+        if(document.getElementById('retraitRibDoc')) document.getElementById('retraitRibDoc').value='';
+        const ribPrev = document.getElementById('retraitRibPreview');
+        if(ribPrev) ribPrev.style.display='none';
+      } catch(e){}
 
       // Message selon mode
       let modeMsg = '';
@@ -1090,6 +1192,25 @@ async function demanderOp(type){
             }
           }catch(e){ console.error('Upload preuve échoué:', e); }
         }, 300);
+      }
+
+      // Upload du RIB EN ARRIÈRE-PLAN (non-bloquant) — mode virement bancaire
+      if(capturedRibFile){
+        setTimeout(async () => {
+          try{
+            const nomFichier = 'RIB_' + ME.id + '_' + isoDay() + '_' + Date.now();
+            const ribUrl = await gasUploadFileObj(capturedRibFile, nomFichier, 'RIB virements');
+            if(ribUrl){
+              const allTx = getTx();
+              const i = allTx.findIndex(t=>t.id===tx.id);
+              if(i>=0){
+                allTx[i].ribUrl = ribUrl;
+                lsSet('nfs_transactions', allTx);
+                gasPush('nfs_transactions', allTx[i]);
+              }
+            }
+          }catch(e){ console.error('Upload RIB échoué:', e); }
+        }, 600);
       }
 
     } catch(err){
@@ -1129,6 +1250,17 @@ function demanderVirement(){
     lsSet('nfs_membres',membres);lsSet('nfs_transactions',txs);
     gasPush('nfs_membres',membres[fi]);gasPush('nfs_membres',membres[ti]);
     gasPush('nfs_transactions',tx1);gasPush('nfs_transactions',tx2);
+
+    // Email de confirmation
+    if(ME.email){
+      gasPost({
+        action: 'sendNotificationEmail',
+        email: ME.email, nom: ME.nom, prenom: ME.prenom,
+        type: 'VIREMENT',
+        details: { montant: fmtN(montant), beneficiaire: membres[ti].nom+' '+membres[ti].prenom },
+        ref: tx1.id
+      });
+    }
 
     document.getElementById('virMontant').value='';document.getElementById('virTo').value='';document.getElementById('virToName').textContent='';
     showSuccess('✅','Virement effectué !',`${fmt(montant)} envoyé à ${membres[ti].nom} ${membres[ti].prenom} (${toC})`,'Réf : '+tx1.id);
@@ -1309,10 +1441,11 @@ function demandeCredit(){
   if(!objet) return toast('Objet du crédit requis','err');
 
   // Capturer le FICHIER lui-même AVANT la modal (clearRecu videra l'input juste après validation)
+  const hasCam = document.getElementById('crGarantieCamera')?.files?.[0];
   const hasPV = document.getElementById('crGarantiePhotoVideo')?.files?.[0];
   const hasDoc = document.getElementById('crGarantieDoc')?.files?.[0];
-  const garantieInputId = hasPV ? 'crGarantiePhotoVideo' : (hasDoc ? 'crGarantieDoc' : null);
-  const capturedGarantieFile = hasPV || hasDoc || null;
+  const garantieInputId = hasCam ? 'crGarantieCamera' : (hasPV ? 'crGarantiePhotoVideo' : (hasDoc ? 'crGarantieDoc' : null));
+  const capturedGarantieFile = hasCam || hasPV || hasDoc || null;
 
   openPinModal('🔐 Confirmer la demande', 'Entrez votre PIN personnel pour soumettre ce dossier de crédit', () => {
    try {
@@ -1334,6 +1467,17 @@ function demandeCredit(){
     credits.push(cr);
     lsSet('nfs_credits', credits);
     gasPush('nfs_credits', cr);
+
+    // Email de confirmation
+    if(ME.email){
+      gasPost({
+        action: 'sendNotificationEmail',
+        email: ME.email, nom: ME.nom, prenom: ME.prenom,
+        type: 'CREDIT',
+        details: { montant: fmtN(M), duree: n, objet: objet },
+        ref: cr.id
+      });
+    }
 
     document.getElementById('crMontant').value='';
     document.getElementById('crObjet').value='';
@@ -1467,6 +1611,18 @@ async function submitAdhesion(){
   demandes.push(d);
   lsSet('nfs_demandes', demandes);
   gasPush('nfs_demandes', d);
+
+  // Email de confirmation de réception (non-bloquant)
+  const emailVal = document.getElementById('a-email').value.trim();
+  if(emailVal){
+    gasPost({
+      action: 'sendNotificationEmail',
+      email: emailVal, nom: nom, prenom: prenom,
+      type: 'ADHESION',
+      details: { tel: tel, profession: profession, produits: produits.join(', ') },
+      ref: ref
+    });
+  }
 
   // Afficher le succès immédiatement
   showSuccess('🎉', 'Demande envoyée !',
@@ -1603,12 +1759,94 @@ function getRetraitModeInfo(){
     return { mode:'MTN_MONEY', numero:num, nom:document.getElementById('retraitMtnName')?.value||'' };
   }
   if(mode==='virement'){
-    const banque = document.getElementById('retraitBanque')?.value;
-    const compte = document.getElementById('retraitCompteNum')?.value;
-    if(!banque||!compte) return null;
-    return { mode:'VIREMENT_BANCAIRE', banque, compte, nom:document.getElementById('retraitCompteName')?.value||'' };
+    const zone = document.querySelector('input[name="virZone"]:checked')?.value || 'cm';
+    if(zone==='cm'){
+      const banque = document.getElementById('retraitBanqueCM')?.value;
+      const codeBanque = document.getElementById('ribCodeBanque')?.value;
+      const codeAgence = document.getElementById('ribCodeAgence')?.value;
+      const numCompte  = document.getElementById('ribNumCompte')?.value;
+      const cleRib     = document.getElementById('ribCle')?.value;
+      if(!banque || !codeAgence || !numCompte || !cleRib) return null;
+      const ribComplet = codeBanque + ' ' + codeAgence + ' ' + numCompte + ' ' + cleRib;
+      return {
+        mode:'VIREMENT_BANCAIRE', zone:'CAMEROUN', banque,
+        codeBanque, codeAgence, numCompte, cleRib,
+        compte: ribComplet,
+        nom: document.getElementById('retraitCompteNameCM')?.value||''
+      };
+    } else {
+      const banque = document.getElementById('retraitBanqueIntl')?.value;
+      const pays   = document.getElementById('retraitPaysIntl')?.value;
+      const iban   = document.getElementById('retraitIbanIntl')?.value;
+      const swift  = document.getElementById('retraitSwiftIntl')?.value;
+      if(!banque||!pays||!iban||!swift) return null;
+      return { mode:'VIREMENT_BANCAIRE', zone:'INTERNATIONAL', banque, pays, iban, swift, nom:document.getElementById('retraitCompteNameIntl')?.value||'' };
+    }
   }
   return { mode };
+}
+
+// ── BANQUES CAMEROUNAISES — liste des noms uniquement ──
+// (Les codes banque officiels CEMAC doivent être saisis manuellement par le membre,
+//  faute de référentiel officiel fiable intégré à l'application.)
+const BANQUES_CM = [
+  'Afriland First Bank',
+  'Société Générale Cameroun',
+  'SCB Cameroun (Standard Chartered)',
+  'BICEC',
+  'Ecobank Cameroun',
+  'UBA Cameroun',
+  "CCA Bank (Crédit Communautaire d'Afrique)",
+  'Banque Atlantique Cameroun',
+  'National Financial Credit (NFC) Bank',
+  'CBC — Commercial Bank of Cameroon',
+  'BGFI Bank Cameroun',
+  'Autre (préciser dans le motif)'
+];
+
+// Remplir le menu des banques au chargement
+function loadBanquesCM(){
+  const sel = document.getElementById('retraitBanqueCM');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">— Sélectionner une banque —</option>' +
+    BANQUES_CM.map(b => `<option value="${b}">${b}</option>`).join('');
+}
+
+// Afficher le solde du compte sélectionné pour un retrait
+function updateRetraitSolde(){
+  if(!ME) return;
+  const compte = document.getElementById('retraitCompte')?.value || 'EP';
+  const solde = compte==='CC' ? (parseFloat(ME.soldeCC)||0) : (parseFloat(ME.soldeEP)||0);
+  const el = document.getElementById('retraitSoldeCompte');
+  if(el) el.textContent = 'Solde disponible : ' + fmt(solde);
+}
+
+// Basculer entre virement Cameroun et International
+function toggleVirZone(zone){
+  const cmCard = document.getElementById('virZone-cm');
+  const intlCard = document.getElementById('virZone-intl');
+  const cmOpts = document.getElementById('vir-cm-opts');
+  const intlOpts = document.getElementById('vir-intl-opts');
+  if(zone==='cm'){
+    cmCard.style.border='2px solid var(--blue)'; cmCard.style.background='#EFF6FF';
+    intlCard.style.border='2px solid var(--border)'; intlCard.style.background='';
+    cmOpts.style.display='block'; intlOpts.style.display='none';
+  } else {
+    intlCard.style.border='2px solid var(--blue)'; intlCard.style.background='#EFF6FF';
+    cmCard.style.border='2px solid var(--border)'; cmCard.style.background='';
+    intlOpts.style.display='block'; cmOpts.style.display='none';
+  }
+}
+
+// Aperçu RIB uploadé
+function showRibPreview(input){
+  const file = input.files[0];
+  if(!file) return;
+  const prev = document.getElementById('retraitRibPreview');
+  const size = (file.size/1024/1024).toFixed(2);
+  const icon = file.type.startsWith('image/') ? '📷' : '📄';
+  prev.textContent = icon + ' ' + file.name + ' (' + size + ' Mo) — joint';
+  prev.style.display = 'block';
 }
 
 // ── MISE À JOUR APPLICATION ───────────────────────────────────
@@ -1652,6 +1890,7 @@ function doUpdate(url){
 // ── INIT ─────────────────────────────────────────────────────
 window.addEventListener('load',async()=>{
   ensureDemo();switchTab('conn');showScreen('loginScreen');
+  loadBanquesCM();
   loadAgences();
   await gasPull('nfs_membres','nfs_membres');
   await Promise.all([gasPull('nfs_transactions','nfs_transactions'),gasPull('nfs_credits','nfs_credits'),gasPull('nfs_demandes','nfs_demandes')]);

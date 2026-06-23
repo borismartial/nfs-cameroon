@@ -710,7 +710,7 @@ function renderDash(){
               <div style="font-size:12px;font-weight:600">${t.type} — ${fmt(t.montant)}</div>
               <div class="fs11" style="color:var(--muted)">${getNom(t.membreId)} · <span class="acc-pill acc-${t.compte==='CC'?'cc':'ep'}">${t.compte}</span> · ${t.dateAff||t.date}</div>
               ${t.recu&&t.recu.startsWith('http')?`<a href="${t.recu}" target="_blank" style="font-size:11px;color:var(--blue);font-weight:600">📎 Voir la preuve</a>`:''}
-              ${t.type==='RETRAIT'&&t.modeRetrait?`<div style="margin-top:3px">${formatModeRetrait(t.modeRetrait)}</div>`:''}
+              ${t.type==='RETRAIT'&&t.modeRetrait?`<div style="margin-top:3px">${formatModeRetrait(t.modeRetrait, t.ribUrl)}</div>`:''}
             </div>
             <div style="display:flex;gap:4px">
               <button class="btn btn-s btn-sm" onclick="demanderApprob('${t.id}','approuver')">✓</button>
@@ -938,7 +938,7 @@ function renderDepots(){
           <td class="fw7">${fmt(t.montant)}</td>
           <td class="fs11">${t.motif||'—'}</td>
           <td>${formatPreuve(t.recu)}</td>
-          <td>${t.type==='RETRAIT'?formatModeRetrait(t.modeRetrait):'—'}</td>
+          <td>${t.type==='RETRAIT'?formatModeRetrait(t.modeRetrait, t.ribUrl):'—'}</td>
           <td><div style="display:flex;gap:4px">
             <button class="btn btn-s btn-sm" onclick="demanderApprob('${t.id}','approuver')">✓ Approuver</button>
             <button class="btn btn-d btn-sm" onclick="demanderApprob('${t.id}','rejeter')">✕ Rejeter</button>
@@ -959,7 +959,7 @@ function renderDepots(){
           <td class="fw7 ${t.type==='DEPOT'?'text-g':'text-r'}">${fmt(t.montant)}</td>
           <td class="fs11">${t.motif||'—'}</td>
           <td>${formatPreuve(t.recu)}</td>
-          <td>${t.type==='RETRAIT'?formatModeRetrait(t.modeRetrait):'—'}</td>
+          <td>${t.type==='RETRAIT'?formatModeRetrait(t.modeRetrait, t.ribUrl):'—'}</td>
           <td><span class="st st-${t.statut}">${t.statut}</span></td>
         </tr>`).join('')||'<tr><td colspan="9" class="empty">Aucune transaction</td></tr>'}
       </table>
@@ -1317,7 +1317,18 @@ function accepterDemande(ref){
     const m={id,ccId:'CC-'+id.slice(4),epId:'EP-'+id.slice(4),nom:d.nom,prenom:d.prenom,tel:d.tel,email:d.email||'',adresse:d.adresse,profession:d.profession,agence:d.agence||'AG01',soldeCC:0,soldeEP:0,pin:pinInit,pinAChanger:true,statut:'actif',dateAdhesion:isoDay(),derniereOp:isoDay()};
     S.membres.push(m);d.statut='acceptee';d.membreId=id;
     lsSave();gasPush('nfs_membres',m);gasPush('nfs_demandes',d);
-    toast('Demande acceptée — '+id+' créé (PIN provisoire: '+pinInit+')','ok');
+
+    // Envoyer l'email de bienvenue avec identifiants
+    if(d.email){
+      gasPost({
+        action: 'sendWelcomeEmail',
+        email: d.email, nom: d.nom, prenom: d.prenom,
+        memberId: id, pin: pinInit
+      });
+      toast('Demande acceptée — '+id+' créé. Email envoyé à '+d.email,'ok');
+    } else {
+      toast('Demande acceptée — '+id+' créé (PIN provisoire: '+pinInit+'). Aucun email renseigné.','ok');
+    }
     renderDemandes();
   });
 }
@@ -1445,10 +1456,13 @@ window.addEventListener('load', ()=>{
 });
 
 // ── HELPERS ──────────────────────────────────────────────────
-function formatModeRetrait(modeStr){
+function formatModeRetrait(modeStr, ribUrl){
   try {
     const m = typeof modeStr === 'string' ? JSON.parse(modeStr) : modeStr;
     if(!m || !m.mode) return '<span class="fs11" style="color:var(--muted)">—</span>';
+    const ribLink = (ribUrl && ribUrl.startsWith('http'))
+      ? `<a href="${ribUrl}" target="_blank" style="display:inline-block;margin-top:4px;font-size:10px;color:var(--blue);font-weight:700">📎 Voir le RIB</a>`
+      : '';
     const box = 'display:block;min-width:170px;max-width:260px;white-space:normal;word-break:break-word;';
     const badge = 'display:inline-block;font-size:11px;font-weight:700;padding:3px 8px;border-radius:8px;margin-bottom:4px;white-space:nowrap;';
     const line = 'display:block;font-size:11px;color:var(--text);line-height:1.5;margin-bottom:1px;';
@@ -1473,12 +1487,29 @@ function formatModeRetrait(modeStr){
         <span style="${line}"><span style="${lbl}">Titulaire :</span> ${m.nom||'—'}</span>
       </div>`;
 
-    if(m.mode==='VIREMENT_BANCAIRE') return `<div style="${box}">
-        <span style="${badge}background:#DBEAFE;color:#1D4ED8">🏦 VIREMENT BANCAIRE</span>
+    if(m.mode==='VIREMENT_BANCAIRE'){
+      if(m.zone==='INTERNATIONAL'){
+        return `<div style="${box}">
+          <span style="${badge}background:#FEE2E2;color:#DC2626">🌍 VIREMENT INTERNATIONAL</span>
+          <span style="${line}"><span style="${lbl}">Banque :</span> ${m.banque||'—'}</span>
+          <span style="${line}"><span style="${lbl}">Pays :</span> ${m.pays||'—'}</span>
+          <span style="${line}"><span style="${lbl}">IBAN :</span> ${m.iban||'—'}</span>
+          <span style="${line}"><span style="${lbl}">SWIFT/BIC :</span> ${m.swift||'—'}</span>
+          <span style="${line}"><span style="${lbl}">Titulaire :</span> ${m.nom||'—'}</span>
+          ${ribLink}
+        </div>`;
+      }
+      return `<div style="${box}">
+        <span style="${badge}background:#DBEAFE;color:#1D4ED8">🇨🇲 VIREMENT AU CAMEROUN</span>
         <span style="${line}"><span style="${lbl}">Banque :</span> ${m.banque||'—'}</span>
-        <span style="${line}"><span style="${lbl}">N° de compte :</span> ${m.compte||'—'}</span>
+        <span style="${line}"><span style="${lbl}">RIB :</span></span>
+        <span style="display:inline-block;font-family:monospace;font-size:11px;background:#F8FAFC;padding:3px 6px;border-radius:4px;margin-bottom:2px">
+          ${m.codeBanque||'—'} <b>${m.codeAgence||'—'}</b> ${m.numCompte||'—'} <b>${m.cleRib||'—'}</b>
+        </span>
         <span style="${line}"><span style="${lbl}">Titulaire :</span> ${m.nom||'—'}</span>
+        ${ribLink}
       </div>`;
+    }
 
     return '<span class="fs11" style="color:var(--muted)">—</span>';
   } catch(e){ return '<span class="fs11" style="color:var(--muted)">—</span>'; }
