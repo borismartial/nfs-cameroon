@@ -735,14 +735,11 @@ async function gasUpsertMany(table, rows) {
 
 async function gasPull(table, lsKey) {
   const remote = await gasGet(table);
+  // Si la requête échoue (réseau/timeout), on garde le cache local intact
   if (!remote || !Array.isArray(remote)) return false;
-  if (!remote.length) return true;
-  const pk = table === 'nfs_demandes' ? 'ref' : 'id';
-  const local = JSON.parse(localStorage.getItem(lsKey) || '[]');
-  const map = {};
-  local.forEach(r => { if (r[pk]) map[r[pk]] = r; });
-  remote.forEach(r => { if (r[pk]) map[r[pk]] = r; });
-  localStorage.setItem(lsKey, JSON.stringify(Object.values(map)));
+  // Le serveur (Google Sheets) est la SOURCE DE VÉRITÉ — y compris quand il est vide
+  // (ex: après une réinitialisation volontaire des données par l'administrateur)
+  localStorage.setItem(lsKey, JSON.stringify(remote));
   return true;
 }
 

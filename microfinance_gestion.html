@@ -400,14 +400,11 @@ async function gasUpsertMany(table, rows) {
 
 async function gasPull(table, lsKey) {
   const remote = await gasGet(table);
+  // Si la requête échoue (réseau/timeout), on garde le cache local intact
   if (!remote || !Array.isArray(remote)) return false;
-  if (!remote.length) return true;
-  const pk = table === 'nfs_demandes' ? 'ref' : 'id';
-  const local = JSON.parse(localStorage.getItem(lsKey) || '[]');
-  const map = {};
-  local.forEach(r => { if (r[pk]) map[r[pk]] = r; });
-  remote.forEach(r => { if (r[pk]) map[r[pk]] = r; });
-  localStorage.setItem(lsKey, JSON.stringify(Object.values(map)));
+  // Le serveur (Google Sheets) est la SOURCE DE VÉRITÉ — y compris quand il est vide
+  // (ex: après une réinitialisation volontaire des données par l'administrateur)
+  localStorage.setItem(lsKey, JSON.stringify(remote));
   return true;
 }
 
@@ -526,20 +523,22 @@ async function pullAll(){
     gasPull('nfs_demandes','nfs_demandes'),
     gasPull('nfs_agences','nfs_agences'),
   ]);
-  // Pour les transactions : merge intelligent — local gagne sur statut
+  // Pour les transactions : le serveur reste la source de vérité.
+  // On ne réinjecte les transactions locales que si elles existent ENCORE côté serveur
+  // (protège contre une race condition juste après une approbation très récente,
+  //  sans jamais faire revivre des données supprimées côté serveur).
   const remoteTx = await gasGet('nfs_transactions');
   if(remoteTx && Array.isArray(remoteTx)){
     const local = JSON.parse(localStorage.getItem('nfs_transactions')||'[]');
+    const remoteIds = new Set(remoteTx.map(r=>r.id).filter(Boolean));
     const map = {};
-    // Partir du remote
     remoteTx.forEach(r=>{ if(r.id) map[r.id]=r; });
-    // Local gagne si statut est plus avancé (approuve/rejete > attente)
     const ordre = {attente:0, approuve:1, rejete:1};
     local.forEach(r=>{
       if(!r.id) return;
+      if(!remoteIds.has(r.id)) return; // n'existe plus côté serveur -> ne pas réinjecter
       const remoteStatut = map[r.id]?.statut || 'attente';
       const localStatut  = r.statut || 'attente';
-      // Garder la version locale si son statut est >= remote
       if((ordre[localStatut]||0) >= (ordre[remoteStatut]||0)){
         map[r.id] = r;
       }
