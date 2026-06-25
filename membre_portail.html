@@ -1129,7 +1129,7 @@ async function demanderOp(type){
       lsSet('nfs_transactions', txs);
       gasPush('nfs_transactions', tx);
 
-      // Email de confirmation (non-bloquant)
+      // Email de confirmation (non-bloquant) — avec diagnostic visible sur mobile
       if(ME.email){
         let modeLabel = '';
         if(capturedModeInfo){
@@ -1144,7 +1144,12 @@ async function demanderOp(type){
           type: capturedType,
           details: { montant: fmtN(capturedMontant), compte: capturedCompte, motif: capturedMotif, mode: modeLabel },
           ref: tx.id
+        }).then(success => {
+          if(success) console.log('Email envoyé avec succès à', ME.email);
+          else setTimeout(()=>toast('⚠️ Email non envoyé (vérifiez la connexion)','err'), 2500);
         });
+      } else {
+        setTimeout(()=>toast('ℹ️ Aucun email enregistré pour ce compte','info'), 2500);
       }
 
       // Reset formulaire
@@ -1175,8 +1180,9 @@ async function demanderOp(type){
         `Votre demande de ${capturedType.toLowerCase()} de ${fmt(capturedMontant)} sur Compte ${capturedCompte} a été transmise. ${modeMsg}`,
         'Réf : '+tx.id);
 
-      // Upload de la preuve EN ARRIÈRE-PLAN (non-bloquant)
+      // Upload de la preuve EN ARRIÈRE-PLAN (non-bloquant) — avec diagnostic visible
       if(capturedFile){
+        toast('📤 Envoi de la preuve en cours...');
         setTimeout(async () => {
           try{
             const nomFichier = 'PREUVE_' + ME.id + '_' + isoDay() + '_' + Date.now();
@@ -1188,9 +1194,15 @@ async function demanderOp(type){
                 allTx[i].recu = preuveUrl;
                 lsSet('nfs_transactions', allTx);
                 gasPush('nfs_transactions', allTx[i]);
+                toast('✅ Preuve envoyée avec succès','ok');
               }
+            } else {
+              toast('❌ Échec de l\'envoi de la preuve','err');
             }
-          }catch(e){ console.error('Upload preuve échoué:', e); }
+          }catch(e){
+            console.error('Upload preuve échoué:', e);
+            toast('❌ Erreur lors de l\'envoi de la preuve','err');
+          }
         }, 300);
       }
 
