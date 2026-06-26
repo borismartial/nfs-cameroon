@@ -457,6 +457,17 @@ function compressImage(dataUrl, maxWidth, quality) {
 
 // ── STATE ────────────────────────────────────────────────────
 const S={membres:[],transactions:[],credits:[],agences:[],demandes:[],currentOp:null,editId:null,pendingAction:null};
+
+// Version du logiciel — incrémentée à chaque correction structurelle des données
+// pour forcer une purge ponctuelle du cache local lors de la prochaine ouverture.
+const ADMIN_VERSION = '1.1';
+function purgeCacheSiNouvelleVersion(){
+  const lastVersion = localStorage.getItem('nfs_admin_version');
+  if(lastVersion !== ADMIN_VERSION){
+    ['nfs_membres','nfs_transactions','nfs_credits','nfs_demandes'].forEach(k => localStorage.removeItem(k));
+    localStorage.setItem('nfs_admin_version', ADMIN_VERSION);
+  }
+}
 const INACTIF_JOURS=90; // Inactif si aucune op depuis 90 jours
 
 function dedupeById(arr, pk){
@@ -1537,10 +1548,11 @@ function swTab(aId,iId,el){document.getElementById(aId).classList.add('active');
 // ── INIT ────────────────────────────────────────────────────
 function refreshActivePage(){nav(currentPage);}
 window.addEventListener('load',async()=>{
+  purgeCacheSiNouvelleVersion();
   document.getElementById('topDate').textContent=today();
   lsLoad();renderDash();
   const ok=await pullAll();setSyncStatus(ok);
-  if(ok) renderDash();
+  renderDash(); // toujours réafficher après pullAll, même si ok=false (le cache local a pu être purgé)
   setInterval(async()=>{
     const ok=await pullAll();
     setSyncStatus(ok);
