@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>NFS CAMEROON — Collecteur terrain</title>
+<style>
+:root{--navy:#0D2B6E;--blue:#1A56B0;--gold:#D4A017;--green:#16A34A;--red:#DC2626;--orange:#EA580C;--bg:#F0F4F8;--border:#E2E8F0;--text:#1E293B;--muted:#64748B;}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',sans-serif;-webkit-tap-highlight-color:transparent;}
+body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-height:100vh;display:flex;flex-direction:column;}
+.screen{display:none;flex-direction:column;height:100vh;overflow:hidden;}
+.screen.active{display:flex;}
+.scrollable{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+@keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+
+/* LOGIN */
+.login-header{background:var(--navy);padding:14px 16px 0;text-align:center;flex-shrink:0;line-height:0}
+.login-tabs{display:flex;background:var(--navy);padding:0 16px;flex-shrink:0}
+.pin-dots{display:flex;gap:14px;justify-content:center;margin:12px 0;}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid var(--border);transition:background .15s;}
+.pin-dot.filled{background:var(--blue);border-color:var(--blue);}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:0 16px;}
+.pin-key{height:58px;border-radius:12px;background:#fff;border:1px solid var(--border);font-size:22px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;user-select:none;}
+.pin-key:active{background:var(--blue);color:#fff;}
+
+/* HEADER */
+.app-header{background:var(--navy);color:#fff;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.app-header h2{font-size:14px;font-weight:700;}
+.back-btn{font-size:22px;cursor:pointer;padding:2px 6px;}
+.sync-pill{display:flex;align-items:center;gap:5px;font-size:10px;background:rgba(255,255,255,.12);padding:4px 9px;border-radius:14px;}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--red);}
+.sync-dot.ok{background:var(--green);}
+.sync-dot.pending{background:var(--gold);animation:pulse 1s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* HERO / DASHBOARD */
+.hero{background:linear-gradient(135deg,var(--blue),var(--navy));padding:16px 15px 20px;color:#fff;}
+.hero .stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px;}
+.hero .stat-box{background:rgba(255,255,255,.13);border-radius:10px;padding:11px;}
+.hero .stat-label{font-size:10px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.5px;}
+.hero .stat-val{font-size:17px;font-weight:800;margin-top:3px;}
+
+/* QUICK ACTIONS */
+.quick-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:12px 11px;background:#fff;border-bottom:1px solid var(--border);}
+.qa-btn{display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;padding:7px 4px;border-radius:10px;}
+.qa-btn:active{background:#F0F4F8;}
+.qa-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:19px;}
+.qa-label{font-size:9px;font-weight:600;color:var(--muted);text-align:center;}
+
+/* SECTIONS / LISTS */
+.section{padding:13px 13px 0;}
+.section-title{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:9px;display:flex;justify-content:space-between;align-items:center}
+.see-all{font-size:11px;color:var(--blue);cursor:pointer;}
+.client-list{background:#fff;border-radius:12px;border:1px solid var(--border);overflow:hidden;}
+.client-item{display:flex;align-items:center;gap:11px;padding:12px 13px;border-bottom:1px solid #F8FAFC;cursor:pointer;}
+.client-item:last-child{border-bottom:none;}
+.client-item:active{background:#F8FAFC;}
+.client-avatar{width:38px;height:38px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;}
+.client-info{flex:1;min-width:0;}
+.client-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.client-sub{font-size:11px;color:var(--muted);margin-top:1px;}
+.client-status{font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;flex-shrink:0;}
+.st-collecte{background:#DCFCE7;color:var(--green);}
+.st-attente{background:#FEF9C3;color:#CA8A04;}
+.st-manque{background:#FEE2E2;color:var(--red);}
+
+/* SEARCH BAR */
+.search-bar{display:flex;align-items:center;gap:8px;background:#fff;border:1px solid var(--border);border-radius:10px;padding:9px 13px;margin:0 13px 12px;}
+.search-bar input{border:none;outline:none;flex:1;font-size:13px;background:transparent;}
+
+/* FORMS */
+.form-group{margin-bottom:13px;}
+.form-label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:5px;}
+.form-input{width:100%;padding:12px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;outline:none;background:#fff;}
+.form-input:focus{border-color:var(--blue);}
+.form-select{width:100%;padding:12px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;outline:none;background:#fff;}
+.form-hint{font-size:11px;color:var(--muted);margin-top:3px;}
+
+/* MAIN BUTTON */
+.main-btn{width:100%;padding:14px;border:none;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;color:#fff;background:var(--blue);}
+.main-btn:active{opacity:.85;}
+.main-btn.green{background:var(--green);}
+.main-btn.red{background:var(--red);}
+.main-btn.navy{background:var(--navy);}
+.main-btn.gold{background:var(--gold);}
+.main-btn.orange{background:var(--orange);}
+.main-btn:disabled{opacity:.4;}
+.form-screen{flex:1;overflow-y:auto;padding:15px;}
+.amount-display{background:#F0F9FF;border-radius:12px;padding:15px;text-align:center;margin-bottom:16px;}
+.amount-display .lbl{font-size:11px;color:var(--muted);}
+.amount-display .val{font-size:28px;font-weight:800;color:var(--navy);}
+.bottom-btn{padding:13px;background:#fff;border-top:1px solid var(--border);flex-shrink:0;}
+
+/* BOTTOM NAV */
+.bottom-nav{background:#fff;border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(4,1fr);padding:5px 0 max(env(safe-area-inset-bottom),5px);flex-shrink:0;}
+.nav-tab{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:5px 0;}
+.nav-tab .nav-icon{font-size:18px;}
+.nav-tab .nav-label{font-size:9px;color:var(--muted);font-weight:600;}
+.nav-tab.active .nav-label{color:var(--blue);}
+
+/* TOAST */
+#toast{position:fixed;bottom:75px;left:50%;transform:translateX(-50%) translateY(20px);background:#1E293B;color:#fff;padding:10px 20px;border-radius:24px;font-size:12px;z-index:9999;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;max-width:90%;text-align:center}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+#toast.ok{background:var(--green);}
+#toast.err{background:var(--red);}
+
+/* SUCCESS */
+.success-body{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px;text-align:center;}
+
+/* MODE PAYMENT CARDS */
+.mode-card{display:flex;align-items:center;gap:12px;padding:12px 14px;border:2px solid var(--border);border-radius:10px;cursor:pointer;margin-bottom:8px;}
+.mode-card.selected{border-color:var(--blue);background:#EFF6FF;}
+
+/* PIN CONFIRM MODAL */
+.pin-confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:none;align-items:center;justify-content:center;z-index:500;}
+.pin-confirm-overlay.open{display:flex;}
+.pin-confirm-box{background:#fff;border-radius:16px;padding:24px;width:300px;text-align:center;}
+.pin-confirm-box h3{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:6px;}
+.pin-confirm-box p{font-size:12px;color:var(--muted);margin-bottom:16px;}
+.mini-pin-dots{display:flex;gap:12px;justify-content:center;margin:12px 0;}
+.mini-dot{width:12px;height:12px;border-radius:50%;border:2px solid var(--border);}
+.mini-dot.filled{background:var(--blue);border-color:var(--blue);}
+.mini-pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 8px;}
+.mini-key{height:50px;border-radius:10px;background:#F8FAFC;border:1px solid var(--border);font-size:20px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.mini-key:active{background:var(--blue);color:#fff;}
+.pin-err{color:var(--red);font-size:11px;margin-top:6px;display:none;}
+
+.fw7{font-weight:700;}
+.fs11{font-size:11px;}
+.text-green{color:var(--green);}
+.text-red{color:var(--red);}
+.badge-sync{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;}
+.badge-sync.pending{background:#FEF9C3;color:#CA8A04;}
+.badge-sync.synced{background:#DCFCE7;color:var(--green);}
+.badge-sync.error{background:#FEE2E2;color:var(--red);}
+
+.receipt-box{background:#F8FAFC;border:1.5px dashed var(--border);border-radius:10px;padding:16px;margin-top:14px;font-family:'Courier New',monospace;font-size:12px;line-height:1.7;}
+.receipt-box .line{display:flex;justify-content:space-between;}
+.receipt-box hr{border:none;border-top:1px dashed var(--border);margin:8px 0;}
+</style>
+</head>
+<body>
+
+<!-- ════ LOGIN ════ -->
+<div id="loginScreen" class="screen active">
+  <div class="login-header"><img id="loginLogo" style="width:100%;max-width:280px;height:auto;display:block;margin:0 auto" alt="NFS CAMEROON"></div>
+  <div class="login-tabs">
+    <div style="flex:1;text-align:center;padding:11px 0;font-size:13px;font-weight:700;color:#fff;border-bottom:3px solid var(--gold)">🚶 Collecteur terrain</div>
+  </div>
+  <div class="scrollable">
+    <div style="padding:16px">
+      <div style="background:#fff;border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.06)">
+        <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:10px">Connexion commercial</div>
+        <input class="form-input" id="loginId" placeholder="N° commercial (ex: COM-00001)" type="text" autocomplete="off">
+        <div style="font-size:11px;color:var(--muted);margin:4px 0 12px">Remis par votre superviseur</div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-align:center;margin-bottom:7px">CODE PIN</div>
+        <div class="pin-dots">
+          <div class="pin-dot" id="d0"></div><div class="pin-dot" id="d1"></div>
+          <div class="pin-dot" id="d2"></div><div class="pin-dot" id="d3"></div>
+        </div>
+        <div class="pin-pad">
+          <div class="pin-key" onclick="pinKey(1)">1</div><div class="pin-key" onclick="pinKey(2)">2</div><div class="pin-key" onclick="pinKey(3)">3</div>
+          <div class="pin-key" onclick="pinKey(4)">4</div><div class="pin-key" onclick="pinKey(5)">5</div><div class="pin-key" onclick="pinKey(6)">6</div>
+          <div class="pin-key" onclick="pinKey(7)">7</div><div class="pin-key" onclick="pinKey(8)">8</div><div class="pin-key" onclick="pinKey(9)">9</div>
+          <div class="pin-key" style="visibility:hidden"></div><div class="pin-key" onclick="pinKey(0)">0</div><div class="pin-key" onclick="pinDel()">⌫</div>
+        </div>
+        <div id="loginError" style="display:none;color:var(--red);font-size:12px;text-align:center;margin-top:9px">Identifiant ou PIN incorrect</div>
+      </div>
+      <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;padding:11px;margin-top:13px;font-size:11px;color:var(--muted);text-align:center">
+        📶 Cette application fonctionne hors connexion.<br>Vos collectes se synchronisent automatiquement.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ HOME / TOURNÉE ════ -->
+<div id="homeScreen" class="screen">
+  <div class="app-header">
+    <div><div style="font-size:10px;color:rgba(255,255,255,.6)">Bonjour 👋</div><h2 id="headerName">—</h2></div>
+    <div class="sync-pill" onclick="forcerSyncManuelle()"><span class="sync-dot" id="syncDot"></span><span id="syncLabel">Hors ligne</span></div>
+  </div>
+  <div class="scrollable">
+    <div class="hero">
+      <div style="font-size:10px;color:rgba(255,255,255,.6)" id="heroDate">—</div>
+      <div style="font-size:16px;font-weight:800;margin-top:2px">Tournée du jour</div>
+      <div class="stats">
+        <div class="stat-box"><div class="stat-label">Collecté aujourd'hui</div><div class="stat-val" id="heroCollecte">0 FCFA</div></div>
+        <div class="stat-box"><div class="stat-label">Clients visités</div><div class="stat-val" id="heroVisites">0 / 0</div></div>
+      </div>
+    </div>
+    <div class="quick-actions">
+      <div class="qa-btn" onclick="goTo('tourneeScreen')"><div class="qa-icon" style="background:#DBEAFE">🗺️</div><div class="qa-label">Tournée</div></div>
+      <div class="qa-btn" onclick="goTo('rechercheScreen')"><div class="qa-icon" style="background:#FEF3C7">🔍</div><div class="qa-label">Rechercher</div></div>
+      <div class="qa-btn" onclick="goTo('clotureScreen')"><div class="qa-icon" style="background:#DCFCE7">🔒</div><div class="qa-label">Clôture</div></div>
+      <div class="qa-btn" onclick="goTo('perfScreen')"><div class="qa-icon" style="background:#FEE2E2">📊</div><div class="qa-label">Performance</div></div>
+    </div>
+    <div class="section">
+      <div class="section-title">Clients restants <span class="see-all" onclick="goTo('tourneeScreen')">Tout voir</span></div>
+      <div class="client-list" id="homeClientList"><div class="client-item" style="justify-content:center;color:var(--muted);font-size:13px;padding:18px">Chargement...</div></div>
+    </div>
+    <div class="section" style="margin-top:14px;padding-bottom:18px">
+      <div class="section-title">File de synchronisation</div>
+      <div id="syncQueueBox" style="background:#fff;border-radius:12px;border:1px solid var(--border);padding:12px"></div>
+    </div>
+  </div>
+  <div class="bottom-nav">
+    <div class="nav-tab active" onclick="goHome()"><div class="nav-icon">🏠</div><div class="nav-label">Accueil</div></div>
+    <div class="nav-tab" onclick="goTo('tourneeScreen')"><div class="nav-icon">🗺️</div><div class="nav-label">Tournée</div></div>
+    <div class="nav-tab" onclick="goTo('clotureScreen')"><div class="nav-icon">🔒</div><div class="nav-label">Clôture</div></div>
+    <div class="nav-tab" onclick="goTo('profilScreen')"><div class="nav-icon">👤</div><div class="nav-label">Profil</div></div>
+  </div>
+</div>
+
+<!-- ════ TOURNÉE (LISTE COMPLÈTE) ════ -->
+<div id="tourneeScreen" class="screen">
+  <div class="app-header"><span class="back-btn" onclick="goHome()">←</span><h2>Ma tournée</h2><span></span></div>
+  <div class="scrollable" style="padding:13px">
+    <div id="tourneeList"></div>
+  </div>
+  <div class="bottom-nav">
+    <div class="nav-tab" onclick="goHome()"><div class="nav-icon">🏠</div><div class="nav-label">Accueil</div></div>
+    <div class="nav-tab active"><div class="nav-icon">🗺️</div><div class="nav-label">Tournée</div></div>
+    <div class="nav-tab" onclick="goTo('clotureScreen')"><div class="nav-icon">🔒</div><div class="nav-label">Clôture</div></div>
+    <div class="nav-tab" onclick="goTo('profilScreen')"><div class="nav-icon">👤</div><div class="nav-label">Profil</div></div>
+  </div>
+</div>
+
+<!-- ════ RECHERCHE CLIENT ════ -->
+<div id="rechercheScreen" class="screen">
+  <div class="app-header"><span class="back-btn" onclick="goHome()">←</span><h2>Rechercher un client</h2><span></span></div>
+  <div style="padding:13px 13px 0">
+    <div class="search-bar"><span>🔍</span><input id="searchInput" placeholder="Nom, numéro de compte, téléphone..." oninput="filtrerRecherche()" autofocus></div>
+  </div>
+  <div class="scrollable" style="padding:0 13px">
+    <div id="rechercheResults"></div>
+  </div>
+</div>
+
+<!-- ════ FICHE CLIENT ════ -->
+<div id="ficheClientScreen" class="screen">
+  <div class="app-header"><span class="back-btn" onclick="goBackFromFiche()">←</span><h2>Fiche client</h2><span></span></div>
+  <div class="scrollable" style="padding:13px">
+    <div id="ficheClientContent"></div>
+  </div>
+  <div class="bottom-btn" style="display:flex;gap:8px">
+    <button class="main-btn green" style="flex:1" onclick="ouvrirSaisieCollecte('VERSEMENT')">📥 Versement</button>
+    <button class="main-btn orange" style="flex:1" onclick="ouvrirSaisieCollecte('RETRAIT')">📤 Retrait</button>
+  </div>
+</div>
+
+<!-- ════ SAISIE COLLECTE ════ -->
+<div id="saisieScreen" class="screen">
+  <div class="app-header"><span class="back-btn" onclick="goBackFromFiche()">←</span><h2 id="saisieTitle">Collecte</h2><span></span></div>
+  <div class="form-screen">
+    <div id="saisieClientInfo" style="background:#F0F9FF;border-radius:10px;padding:11px 13px;margin-bottom:14px;font-size:12px;color:var(--navy)"></div>
+
+    <div class="amount-display"><div class="lbl">Montant</div><div class="val" id="saisieDisp">0</div><div style="font-size:12px;color:var(--muted)">FCFA</div></div>
+    <div class="form-group"><label class="form-label">Montant (FCFA) *</label><input class="form-input" id="saisieMontant" type="number" min="1" inputmode="numeric" oninput="document.getElementById('saisieDisp').textContent=fmtN(this.value)"></div>
+
+    <div class="form-group">
+      <label class="form-label">Mode de paiement</label>
+      <div class="mode-card selected" id="mode-cash" onclick="selectModePaiement('CASH')">
+        <div style="font-size:22px">💵</div>
+        <div><div style="font-size:13px;font-weight:700">Espèces</div><div style="font-size:11px;color:var(--muted)">Cash en main</div></div>
+      </div>
+      <div class="mode-card" id="mode-om" onclick="selectModePaiement('ORANGE_MONEY')">
+        <div style="font-size:22px">🟠</div>
+        <div><div style="font-size:13px;font-weight:700">Orange Money</div><div style="font-size:11px;color:var(--muted)">Mobile money</div></div>
+      </div>
+      <div class="mode-card" id="mode-momo" onclick="selectModePaiement('MTN_MONEY')">
+        <div style="font-size:22px">🟡</div>
+        <div><div style="font-size:13px;font-weight:700">MTN Mobile Money</div><div style="font-size:11px;color:var(--muted)">Mobile money</div></div>
+      </div>
+    </div>
+
+    <div id="saisieSoldeApres" style="background:#F8FAFC;border-radius:10px;padding:11px 13px;font-size:12px;color:var(--muted);margin-bottom:10px"></div>
+
+    <div class="form-group">
+      <label class="form-label">Confirmation client (4 derniers chiffres CNI ou code reçu par SMS)</label>
+      <input class="form-input" id="saisieConfirmation" placeholder="Code de confirmation">
+      <div class="form-hint">Preuve que le client a validé cette opération</div>
+    </div>
+  </div>
+  <div class="bottom-btn"><button class="main-btn" id="saisieBtn" onclick="confirmerCollecte()">Valider la collecte</button></div>
+</div>
+
+<!-- ════ REÇU ════ -->
+<div id="recuScreen" class="screen">
+  <div class="app-header"><span></span><h2>Reçu de collecte</h2><span></span></div>
+  <div class="success-body">
+    <div style="font-size:56px;margin-bottom:10px">✅</div>
+    <div id="recuContent" style="width:100%"></div>
+    <div style="display:flex;gap:8px;width:100%;margin-top:18px">
+      <button class="main-btn navy" style="flex:1" onclick="imprimerRecu()">🖨️ Imprimer</button>
+      <button class="main-btn green" style="flex:1" onclick="envoyerSmsRecu()">💬 SMS client</button>
+    </div>
+    <button class="main-btn" style="margin-top:10px" onclick="goHome()">Retour à l'accueil</button>
+  </div>
+</div>
+
+<!-- ════ CLÔTURE DE CAISSE ════ -->
+<div id="clotureScreen" class="screen">
+  <div class="app-header"><span class="back-btn" onclick="goHome()">←</span><h2>Clôture de caisse</h2><span></span></div>
+  <div class="scrollable" style="padding:13px">
+    <div id="clotureContent"></div>
+  </div>
+  <div class="bottom-btn"><button class="main-btn red" onclick="confirmerCloture()">🔒 Clôturer et remettre la caisse</button></div>
+</div>
+
+<!-- ════ PERFORMANCE ════ -->
+<div id="perfScreen" class="screen">
+  <div class="app-header"><span class="back-btn" onclick="goHome()">←</span><h2>Ma performance</h2><span></span></div>
+  <div class="scrollable" style="padding:13px">
+    <div id="perfContent"></div>
+  </div>
+</div>
+
+<!-- ════ PROFIL ════ -->
+<div id="profilScreen" class="screen">
+  <div class="app-header"><span class="back-btn" onclick="goHome()">←</span><h2>Mon profil</h2><span></span></div>
+  <div class="scrollable" style="padding:13px">
+    <div id="profilContent"></div>
+    <button class="main-btn red" style="margin-top:14px" onclick="logout()">Se déconnecter</button>
+  </div>
+  <div class="bottom-nav">
+    <div class="nav-tab" onclick="goHome()"><div class="nav-icon">🏠</div><div class="nav-label">Accueil</div></div>
+    <div class="nav-tab" onclick="goTo('tourneeScreen')"><div class="nav-icon">🗺️</div><div class="nav-label">Tournée</div></div>
+    <div class="nav-tab" onclick="goTo('clotureScreen')"><div class="nav-icon">🔒</div><div class="nav-label">Clôture</div></div>
+    <div class="nav-tab active"><div class="nav-icon">👤</div><div class="nav-label">Profil</div></div>
+  </div>
+</div>
+
+<!-- ════ MODAL PIN CONFIRMATION ════ -->
+<div id="pinConfirmModal" class="pin-confirm-overlay">
+  <div class="pin-confirm-box">
+    <h3 id="pinModalTitle">🔐 Confirmer</h3>
+    <p id="pinModalDesc">Entrez votre PIN pour valider</p>
+    <div class="mini-pin-dots">
+      <div class="mini-dot" id="md0"></div><div class="mini-dot" id="md1"></div>
+      <div class="mini-dot" id="md2"></div><div class="mini-dot" id="md3"></div>
+    </div>
+    <div class="mini-pin-pad">
+      <div class="mini-key" onclick="mPinKey(1)">1</div><div class="mini-key" onclick="mPinKey(2)">2</div><div class="mini-key" onclick="mPinKey(3)">3</div>
+      <div class="mini-key" onclick="mPinKey(4)">4</div><div class="mini-key" onclick="mPinKey(5)">5</div><div class="mini-key" onclick="mPinKey(6)">6</div>
+      <div class="mini-key" onclick="mPinKey(7)">7</div><div class="mini-key" onclick="mPinKey(8)">8</div><div class="mini-key" onclick="mPinKey(9)">9</div>
+      <div class="mini-key" style="visibility:hidden"></div><div class="mini-key" onclick="mPinKey(0)">0</div><div class="mini-key" onclick="mPinDel()">⌫</div>
+    </div>
+    <div class="pin-err" id="pinModalErr">PIN incorrect</div>
+    <button class="main-btn" style="margin-top:14px;background:#6B7280;font-size:13px;padding:10px" onclick="closePinModal()">Annuler</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="collecteur_app.js"></script>
+</body>
+</html>
