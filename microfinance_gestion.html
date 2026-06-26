@@ -212,6 +212,7 @@ tr:hover td{background:#F8FAFC;}
   <div class="nav-sec">Administration</div>
   <div class="nav-item" onclick="nav('demandes')" id="nav-demandes"><span>✍️</span>Demandes adhésion<span class="nav-badge" id="badge-demandes" style="display:none">0</span></div>
   <div class="nav-item" onclick="nav('agences')"><span>🏢</span>Agences</div>
+  <div class="nav-item" onclick="nav('commerciaux')"><span>🚶</span>Commerciaux</div>
   <div class="nav-item" onclick="nav('rapports')"><span>📈</span>Rapports</div>
   <div class="sidebar-footer">
     <div><span class="sync-dot" id="syncDot"></span><span id="syncLabel">Hors ligne</span></div>
@@ -348,6 +349,42 @@ tr:hover td{background:#F8FAFC;}
   </div>
 </div>
 
+<!-- MODAL COMMERCIAL -->
+<div id="mCom" class="modal-ov">
+  <div class="modal">
+    <div class="modal-hd"><h3>Nouveau commercial</h3><button class="modal-close" onclick="closeM('mCom')">✕</button></div>
+    <div class="modal-bd">
+      <div class="form-grid">
+        <div class="fg"><label>Nom *</label><input class="fi" id="com-nom" placeholder="Nom"></div>
+        <div class="fg"><label>Prénom *</label><input class="fi" id="com-prenom" placeholder="Prénom(s)"></div>
+        <div class="fg"><label>Téléphone *</label><input class="fi" id="com-tel" placeholder="+237 6XX XXX XXX"></div>
+        <div class="fg"><label>Email</label><input class="fi" id="com-email" type="email"></div>
+        <div class="fg"><label>Agence</label><select class="fi" id="com-agence"></select></div>
+        <div class="fg"><label>Zone de collecte</label><input class="fi" id="com-zone" placeholder="Ex: Akwa, Bonanjo..."></div>
+        <div class="fg full"><label>Plafond de caisse avant remise obligatoire (FCFA)</label><input class="fi" id="com-plafond" type="number" min="0" value="200000"></div>
+      </div>
+    </div>
+    <div class="modal-ft"><button class="btn btn-o" onclick="closeM('mCom')">Annuler</button><button class="btn btn-p" onclick="saveCommercial()">Créer le commercial</button></div>
+  </div>
+</div>
+
+<!-- MODAL PORTEFEUILLE -->
+<div id="mPortefeuille" class="modal-ov">
+  <div class="modal">
+    <div class="modal-hd"><h3 id="mPortefeuilleTitle">Portefeuille client</h3><button class="modal-close" onclick="closeM('mPortefeuille')">✕</button></div>
+    <div class="modal-bd">
+      <div class="fg full" style="margin-bottom:14px"><label>Ajouter un membre au portefeuille</label>
+        <div style="display:flex;gap:8px">
+          <select class="fi" id="pf-membre" style="flex:1"></select>
+          <button class="btn btn-s" onclick="ajouterAuPortefeuille()">+ Ajouter</button>
+        </div>
+      </div>
+      <div id="pfListe"></div>
+    </div>
+    <div class="modal-ft"><button class="btn btn-p" onclick="closeM('mPortefeuille')">Fermer</button></div>
+  </div>
+</div>
+
 <script>
 // ── GAS SYNC ──────────────────────────────────────────────────
 // ── GOOGLE APPS SCRIPT SYNC ───────────────────────────────────
@@ -388,6 +425,26 @@ async function gasPost(body) {
       xhr.ontimeout = () => resolve(false);
       xhr.send(JSON.stringify(body));
     } catch(e) { resolve(false); }
+  });
+}
+
+// Variante de gasPost qui retourne la réponse JSON complète du serveur
+// (nécessaire pour récupérer un ID/PIN généré côté backend)
+async function gasPostWithResponse(body) {
+  return new Promise((resolve) => {
+    try {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', GAS_URL, true);
+      xhr.setRequestHeader('Content-Type', 'text/plain');
+      xhr.timeout = 30000;
+      xhr.onload = () => {
+        try { resolve(JSON.parse(xhr.responseText)); }
+        catch(e) { resolve(null); }
+      };
+      xhr.onerror = () => resolve(null);
+      xhr.ontimeout = () => resolve(null);
+      xhr.send(JSON.stringify(body));
+    } catch(e) { resolve(null); }
   });
 }
 
@@ -456,7 +513,7 @@ function compressImage(dataUrl, maxWidth, quality) {
 
 
 // ── STATE ────────────────────────────────────────────────────
-const S={membres:[],transactions:[],credits:[],agences:[],demandes:[],currentOp:null,editId:null,pendingAction:null};
+const S={membres:[],transactions:[],credits:[],agences:[],demandes:[],commerciaux:[],portefeuilles:[],currentOp:null,editId:null,pendingAction:null};
 
 // Version du logiciel — incrémentée à chaque correction structurelle des données
 // pour forcer une purge ponctuelle du cache local lors de la prochaine ouverture.
@@ -486,6 +543,8 @@ function lsLoad(){
   S.credits=dedupeById(JSON.parse(localStorage.getItem('nfs_credits')||'[]'), 'id');
   S.agences=JSON.parse(localStorage.getItem('nfs_agences')||'[]');
   S.demandes=dedupeById(JSON.parse(localStorage.getItem('nfs_demandes')||'[]'), 'ref');
+  S.commerciaux=dedupeById(JSON.parse(localStorage.getItem('nfs_commerciaux')||'[]'), 'id');
+  S.portefeuilles=dedupeById(JSON.parse(localStorage.getItem('nfs_portefeuilles')||'[]'), 'id');
   if(!S.agences.length){
     S.agences=[{id:'AG01',nom:'Siège Douala Akwa',ville:'Douala'},{id:'AG02',nom:'Agence Bonanjo',ville:'Douala'}];
   }
@@ -498,6 +557,8 @@ function lsSave(){
   localStorage.setItem('nfs_credits',JSON.stringify(S.credits));
   localStorage.setItem('nfs_agences',JSON.stringify(S.agences));
   localStorage.setItem('nfs_demandes',JSON.stringify(S.demandes));
+  localStorage.setItem('nfs_commerciaux',JSON.stringify(S.commerciaux));
+  localStorage.setItem('nfs_portefeuilles',JSON.stringify(S.portefeuilles));
 }
 
 // ── INACTIVITÉ ───────────────────────────────────────────────
@@ -533,6 +594,8 @@ async function pullAll(){
     gasPull('nfs_credits','nfs_credits'),
     gasPull('nfs_demandes','nfs_demandes'),
     gasPull('nfs_agences','nfs_agences'),
+    gasPull('nfs_commerciaux','nfs_commerciaux'),
+    gasPull('nfs_portefeuilles','nfs_portefeuilles'),
   ]);
   // Pour les transactions : le serveur reste la source de vérité.
   // On ne réinjecte les transactions locales que si elles existent ENCORE côté serveur
@@ -646,7 +709,7 @@ function validateAdminPin(){
 
 // ── NAVIGATION ───────────────────────────────────────────────
 const PAGE_TITLES={dashboard:'Tableau de bord',membres:'Membres',depots:'Dépôts & Retraits',
-  virements:'Virements',credits:'Crédits',demandes:"Demandes d'adhésion",agences:'Agences',rapports:'Rapports'};
+  virements:'Virements',credits:'Crédits',demandes:"Demandes d'adhésion",agences:'Agences',commerciaux:'Commerciaux',rapports:'Rapports'};
 let currentPage='dashboard';
 function nav(page){
   currentPage=page;
@@ -656,7 +719,7 @@ function nav(page){
   const mpt = document.getElementById('mobilePageTitle');
   if(mpt) mpt.textContent = PAGE_TITLES[page]||page;
   ({dashboard:renderDash,membres:renderMembres,depots:renderDepots,virements:renderVirements,
-    credits:renderCredits,demandes:renderDemandes,agences:renderAgences,rapports:renderRapports})[page]?.();
+    credits:renderCredits,demandes:renderDemandes,agences:renderAgences,commerciaux:renderCommerciaux,rapports:renderRapports})[page]?.();
   setTimeout(autoLabelTables, 30);
   closeMobileMenu();
 }
@@ -1360,6 +1423,131 @@ function renderAgences(){
 }
 function ajouterAgence(){const nom=prompt('Nom agence :');if(!nom)return;const ville=prompt('Ville :')||'Douala';const id='AG'+String(S.agences.length+1).padStart(2,'0');const ag={id,nom,ville};S.agences.push(ag);lsSave();gasPush('nfs_agences',ag);toast("Agence créée — synchronisée avec l'app","ok");renderAgences();}
 function suppAgence(id){if(!confirm('Supprimer ?'))return;S.agences=S.agences.filter(a=>a.id!==id);lsSave();renderAgences();}
+
+// ── COMMERCIAUX / COLLECTEURS TERRAIN ──────────────────────────
+let pfCurrentCommercialId=null;
+
+function renderCommerciaux(){
+  document.getElementById('content').innerHTML=`
+  <div style="margin-bottom:12px"><button class="btn btn-p" onclick="openCommercial()">+ Nouveau commercial</button></div>
+  <div class="card"><div style="padding:0;overflow-x:auto">
+    <table>
+      <tr><th>ID</th><th>Nom</th><th>Téléphone</th><th>Zone</th><th>Agence</th><th>Plafond caisse</th><th>Portefeuille</th><th>Statut</th><th>Actions</th></tr>
+      ${S.commerciaux.length?S.commerciaux.map(c=>{
+        const nbClients=S.portefeuilles.filter(p=>p.commercialId===c.id).length;
+        return `<tr>
+          <td class="fw7 fs11" style="color:var(--blue)">${c.id}</td>
+          <td>${c.nom} ${c.prenom}</td>
+          <td>${c.tel||'—'}</td>
+          <td class="fs11">${c.zone||'—'}</td>
+          <td class="fs11">${c.agence||'—'}</td>
+          <td class="fw7">${fmt(c.plafondCaisse||0)}</td>
+          <td><span class="badge" style="background:var(--blue)">${nbClients} client(s)</span></td>
+          <td><span class="st st-${c.statut}">${c.statut}</span></td>
+          <td><div style="display:flex;gap:3px">
+            <button class="btn btn-p btn-sm" onclick="openPortefeuille('${c.id}')">👥 Portefeuille</button>
+            <button class="btn btn-d btn-sm" onclick="toggleCommercialStatut('${c.id}')">${c.statut==='actif'?'Suspendre':'Réactiver'}</button>
+          </div></td>
+        </tr>`;}).join(''):'<tr><td colspan="9" class="empty">Aucun commercial créé</td></tr>'}
+    </table>
+  </div></div>`;
+}
+
+function openCommercial(){
+  ['com-nom','com-prenom','com-tel','com-email','com-zone'].forEach(f=>document.getElementById(f).value='');
+  document.getElementById('com-plafond').value='200000';
+  fillAgenceSelect('com-agence');
+  openM('mCom');
+}
+
+function saveCommercial(){
+  const nom=document.getElementById('com-nom').value.trim();
+  const prenom=document.getElementById('com-prenom').value.trim();
+  const tel=document.getElementById('com-tel').value.trim();
+  if(!nom||!prenom) return toast('Nom et prénom obligatoires','err');
+  if(!tel) return toast('Téléphone obligatoire','err');
+
+  requireAdminPin('Créer ce commercial (PIN requis)',async ()=>{
+    const data={
+      nom, prenom, tel,
+      email: document.getElementById('com-email').value.trim(),
+      agence: document.getElementById('com-agence').value,
+      zone: document.getElementById('com-zone').value.trim(),
+      plafondCaisse: parseFloat(document.getElementById('com-plafond').value)||200000
+    };
+    const resp = await gasPostWithResponse({ action:'createCommercial', commercialData:data });
+    if(resp && resp.ok && resp.commercial){
+      toast('Commercial '+resp.commercial.id+' créé (PIN provisoire: '+resp.commercial.pin+')','ok');
+      await pullAll();
+      closeM('mCom');
+      renderCommerciaux();
+    } else {
+      toast('Erreur lors de la création du commercial','err');
+    }
+  });
+}
+
+function toggleCommercialStatut(id){
+  const c=S.commerciaux.find(x=>x.id===id);
+  if(!c) return;
+  requireAdminPin('Modifier le statut de ce commercial (PIN requis)',()=>{
+    c.statut = c.statut==='actif' ? 'suspendu' : 'actif';
+    lsSave();
+    gasPush('nfs_commerciaux', c);
+    toast('Statut mis à jour','ok');
+    renderCommerciaux();
+  });
+}
+
+// ── PORTEFEUILLE CLIENT D'UN COMMERCIAL ────────────────────────
+function openPortefeuille(commercialId){
+  pfCurrentCommercialId = commercialId;
+  const c = S.commerciaux.find(x=>x.id===commercialId);
+  document.getElementById('mPortefeuilleTitle').textContent = 'Portefeuille — '+(c?c.nom+' '+c.prenom:commercialId);
+
+  // Remplir le select avec les membres NON déjà affectés à ce commercial
+  const assignedIds = new Set(S.portefeuilles.filter(p=>p.commercialId===commercialId).map(p=>p.membreId));
+  const sel = document.getElementById('pf-membre');
+  sel.innerHTML = '<option value="">— Choisir un membre —</option>' +
+    S.membres.filter(m=>!assignedIds.has(m.id)).map(m=>`<option value="${m.id}">${m.nom} ${m.prenom} (${m.id})</option>`).join('');
+
+  renderPortefeuilleListe();
+  openM('mPortefeuille');
+}
+
+function renderPortefeuilleListe(){
+  const assigned = S.portefeuilles.filter(p=>p.commercialId===pfCurrentCommercialId);
+  document.getElementById('pfListe').innerHTML = assigned.length
+    ? `<table><tr><th>Membre</th><th>N°</th><th>Date affectation</th><th></th></tr>` +
+      assigned.map(p=>{
+        const m = getMembre(p.membreId);
+        return `<tr>
+          <td>${m?m.nom+' '+m.prenom:'—'}</td>
+          <td class="fs11" style="color:var(--blue)">${p.membreId}</td>
+          <td class="fs11">${p.dateAffectation||'—'}</td>
+          <td><button class="btn btn-d btn-sm" onclick="retirerDuPortefeuille('${p.membreId}')">✕</button></td>
+        </tr>`;}).join('') + '</table>'
+    : '<div class="empty">Aucun client affecté à ce commercial</div>';
+}
+
+function ajouterAuPortefeuille(){
+  const membreId = document.getElementById('pf-membre').value;
+  if(!membreId) return toast('Sélectionnez un membre','err');
+  gasPostWithResponse({ action:'assignPortefeuille', commercialId:pfCurrentCommercialId, membreId }).then(async ()=>{
+    await pullAll();
+    openPortefeuille(pfCurrentCommercialId); // re-render propre avec données fraîches
+    toast('Client ajouté au portefeuille','ok');
+  });
+}
+
+function retirerDuPortefeuille(membreId){
+  if(!confirm('Retirer ce membre du portefeuille ?')) return;
+  gasPostWithResponse({ action:'unassignPortefeuille', commercialId:pfCurrentCommercialId, membreId }).then(async ()=>{
+    await pullAll();
+    openPortefeuille(pfCurrentCommercialId);
+    toast('Client retiré du portefeuille','ok');
+  });
+}
 
 // ── RAPPORTS ─────────────────────────────────────────────────
 function renderRapports(){
