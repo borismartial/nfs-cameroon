@@ -517,11 +517,12 @@ const S={membres:[],transactions:[],credits:[],agences:[],demandes:[],commerciau
 
 // Version du logiciel — incrémentée à chaque correction structurelle des données
 // pour forcer une purge ponctuelle du cache local lors de la prochaine ouverture.
-const ADMIN_VERSION = '1.1';
+const ADMIN_VERSION = '1.2';
 function purgeCacheSiNouvelleVersion(){
   const lastVersion = localStorage.getItem('nfs_admin_version');
   if(lastVersion !== ADMIN_VERSION){
-    ['nfs_membres','nfs_transactions','nfs_credits','nfs_demandes'].forEach(k => localStorage.removeItem(k));
+    ['nfs_membres','nfs_transactions','nfs_credits','nfs_demandes','nfs_agences',
+     'nfs_commerciaux','nfs_portefeuilles','nfs_credits_collecteurs'].forEach(k => localStorage.removeItem(k));
     localStorage.setItem('nfs_admin_version', ADMIN_VERSION);
   }
 }
