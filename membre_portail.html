@@ -261,7 +261,7 @@ body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-he
             <span>J'accepte que NFS CAMEROON traite mes données personnelles conformément à la réglementation COBAC et à la <a href="https://borismartial.github.io/nfs-cameroon/privacy_policy.html" target="_blank" style="color:var(--blue);font-weight:600;text-decoration:underline">Politique de confidentialité</a>.</span>
           </label>
         </div>
-        <button class="main-btn navy" onclick="submitAdhesion()">📩 Soumettre ma demande</button>
+        <button class="main-btn navy" onclick="submitAdhesion()">✅ Créer mon compte</button>
       </div>
       <div style="text-align:center;margin-top:14px;padding-bottom:20px">
         <span onclick="switchTab('conn')" style="color:var(--muted);font-size:13px;cursor:pointer">← Déjà membre ? Se connecter</span>
@@ -727,6 +727,31 @@ async function gasPost(body) {
 }
 
 function gasPush(table, row) { gasPost({ action: 'upsert', table, row }).catch(() => {}); }
+
+// Variante de gasPost qui retourne la réponse JSON complète du serveur
+// (nécessaire quand on a besoin d'une donnée renvoyée par GAS, ex: ID généré)
+async function gasPostWithResponse(body) {
+  return new Promise((resolve) => {
+    try {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', GAS_URL, true);
+      xhr.setRequestHeader('Content-Type', 'text/plain');
+      xhr.timeout = 30000;
+      xhr.onload = () => {
+        try {
+          const j = JSON.parse(xhr.responseText);
+          resolve(j);
+        } catch(e) {
+          console.warn('gasPostWithResponse parse error:', xhr.responseText?.slice(0,200));
+          resolve(null);
+        }
+      };
+      xhr.onerror = () => { console.warn('gasPostWithResponse XHR error'); resolve(null); };
+      xhr.ontimeout = () => { console.warn('gasPostWithResponse timeout'); resolve(null); };
+      xhr.send(JSON.stringify(body));
+    } catch(e) { resolve(null); }
+  });
+}
 
 async function gasUpsertMany(table, rows) {
   if (!rows || !rows.length) return;
@@ -1587,72 +1612,74 @@ async function submitAdhesion(){
   if(document.getElementById('a-cc').checked) produits.push('Compte courant');
   if(document.getElementById('a-credit').checked) produits.push('Crédit');
 
-  // Créer et sauvegarder la demande IMMÉDIATEMENT (sans attendre uploads)
-  const ref = 'ADH-' + Date.now();
-  const d = {
-    ref, id: ref, nom, prenom, cni,
-    sexe:    document.getElementById('a-sexe').value,
-    ddn:     document.getElementById('a-ddn').value,
-    tel,
-    email:   document.getElementById('a-email').value,
-    adresse, profession,
-    agence:  document.getElementById('a-agence').value,
-    produits: produits.join(', '),
-    parrain: document.getElementById('a-parrain').value,
-    trancheDepot: document.getElementById('a-tranche')?.value || '',
-    statut:  'en_attente',
-    date:    todayFr(),
-    dateIso: isoDay(),
-    photoUrl: '', cniRectoUrl: '', cniVersoUrl: ''
-  };
+  const emailVal = document.getElementById('a-email').value.trim();
+  const sexe = document.getElementById('a-sexe').value;
+  const ddn = document.getElementById('a-ddn').value;
+  const agence = document.getElementById('a-agence').value;
+  const parrain = document.getElementById('a-parrain').value;
+  const trancheDepot = document.getElementById('a-tranche')?.value || '';
 
+  toast('Création de votre compte en cours...');
+
+  // Uploader les pièces d'identité AVANT de créer le membre (le backend a besoin des URLs)
+  const hasPhoto = document.getElementById('photoInput')?.files?.[0];
+  const hasCniR  = document.getElementById('cniRectoInput')?.files?.[0];
+  const hasCniV  = document.getElementById('cniVersoInput')?.files?.[0];
+  const ts = Date.now();
+
+  let photoUrl = '', cniRectoUrl = '', cniVersoUrl = '';
+  if(hasPhoto || hasCniR || hasCniV){
+    const results = await Promise.all([
+      hasPhoto ? gasUploadFile('photoInput',    'PHOTO_'+nom+'_'+prenom+'_'+ts,     'Photos de profil') : Promise.resolve(null),
+      hasCniR  ? gasUploadFile('cniRectoInput', 'CNI_RECTO_'+nom+'_'+prenom+'_'+ts, 'Pièces identité')  : Promise.resolve(null),
+      hasCniV  ? gasUploadFile('cniVersoInput', 'CNI_VERSO_'+nom+'_'+prenom+'_'+ts, 'Pièces identité')  : Promise.resolve(null),
+    ]);
+    photoUrl = results[0] || '';
+    cniRectoUrl = results[1] || '';
+    cniVersoUrl = results[2] || '';
+  }
+
+  // Créer le membre immédiatement et activement, via le backend (génération d'ID atomique + email)
+  let createResult = null;
+  try{
+    const resp = await gasPostWithResponse({
+      action: 'createMemberAuto',
+      memberData: {
+        nom, prenom, cni, sexe, ddn, tel, email: emailVal,
+        adresse, profession, agence, photoUrl, cniRectoUrl, cniVersoUrl
+      }
+    });
+    if(resp && resp.ok && resp.member) createResult = resp.member;
+  }catch(e){
+    console.error('Erreur création membre:', e);
+  }
+
+  if(!createResult){
+    toast('❌ Erreur lors de la création du compte. Réessayez.','err');
+    return;
+  }
+
+  // Garder une trace dans nfs_demandes pour l'historique admin (déjà acceptée)
+  const ref = createResult.id;
+  const d = {
+    ref, id: ref, nom, prenom, cni, sexe, ddn, tel, email: emailVal,
+    adresse, profession, agence, produits: produits.join(', '), parrain, trancheDepot,
+    statut: 'acceptee', membreId: createResult.id,
+    date: todayFr(), dateIso: isoDay(),
+    photoUrl, cniRectoUrl, cniVersoUrl
+  };
   const demandes = lsGet('nfs_demandes');
   demandes.push(d);
   lsSet('nfs_demandes', demandes);
   gasPush('nfs_demandes', d);
 
-  // Email de confirmation de réception (non-bloquant)
-  const emailVal = document.getElementById('a-email').value.trim();
-  if(emailVal){
-    gasPost({
-      action: 'sendNotificationEmail',
-      email: emailVal, nom: nom, prenom: prenom,
-      type: 'ADHESION',
-      details: { tel: tel, profession: profession, produits: produits.join(', ') },
-      ref: ref
-    });
-  }
+  // Rafraîchir le cache local des membres pour permettre une connexion immédiate
+  await gasPull('nfs_membres', 'nfs_membres');
 
-  // Afficher le succès immédiatement
-  showSuccess('🎉', 'Demande envoyée !',
-    'Votre demande a bien été transmise. Un agent vous contactera sous 48h au ' + tel + '.',
-    'Référence : ' + ref);
-
-  // Uploader les pièces en arrière-plan (non-bloquant)
-  const hasPhoto = document.getElementById('photoInput')?.files?.[0];
-  const hasCniR  = document.getElementById('cniRectoInput')?.files?.[0];
-  const hasCniV  = document.getElementById('cniVersoInput')?.files?.[0];
-  if(hasPhoto || hasCniR || hasCniV){
-    const ts = Date.now();
-    setTimeout(async () => {
-      const [photoUrl, cniRectoUrl, cniVersoUrl] = await Promise.all([
-        hasPhoto ? gasUploadFile('photoInput',    'PHOTO_'+nom+'_'+prenom+'_'+ts,     'Photos de profil') : null,
-        hasCniR  ? gasUploadFile('cniRectoInput', 'CNI_RECTO_'+nom+'_'+prenom+'_'+ts, 'Pièces identité')  : null,
-        hasCniV  ? gasUploadFile('cniVersoInput', 'CNI_VERSO_'+nom+'_'+prenom+'_'+ts, 'Pièces identité')  : null,
-      ]);
-      if(photoUrl || cniRectoUrl || cniVersoUrl){
-        const dem = lsGet('nfs_demandes');
-        const i = dem.findIndex(x => x.ref === ref);
-        if(i >= 0){
-          if(photoUrl)    dem[i].photoUrl    = photoUrl;
-          if(cniRectoUrl) dem[i].cniRectoUrl = cniRectoUrl;
-          if(cniVersoUrl) dem[i].cniVersoUrl = cniVersoUrl;
-          lsSet('nfs_demandes', dem);
-          gasPush('nfs_demandes', dem[i]);
-        }
-      }
-    }, 500);
-  }
+  showSuccess('🎉', 'Compte créé avec succès !',
+    'Votre compte NFS CAMEROON est actif. Vos identifiants de connexion ont été envoyés par email' +
+    (emailVal ? ' à ' + emailVal : '') + '. Vous pouvez vous connecter dès maintenant.',
+    'Numéro de membre : ' + createResult.id);
 }
 
 
