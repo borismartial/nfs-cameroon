@@ -1388,6 +1388,15 @@ function renderDemandes(){
 
 function accepterDemande(ref){
   const d=S.demandes.find(x=>x.ref===ref);if(!d)return;
+
+  // Empêcher un doublon : même téléphone ou même email qu'un membre déjà existant
+  const telNorm = String(d.tel||'').replace(/\s+/g,'').trim();
+  const emailNorm = String(d.email||'').trim().toLowerCase();
+  const doublonTel = telNorm && S.membres.some(m=>String(m.tel||'').replace(/\s+/g,'').trim()===telNorm);
+  const doublonEmail = emailNorm && S.membres.some(m=>String(m.email||'').trim().toLowerCase()===emailNorm);
+  if(doublonTel){ toast('❌ Un membre existe déjà avec ce numéro de téléphone ('+d.tel+')','err'); return; }
+  if(doublonEmail){ toast('❌ Un membre existe déjà avec cette adresse email ('+d.email+')','err'); return; }
+
   requireAdminPin('Accepter la demande de '+d.nom+' '+d.prenom+' (PIN requis)',()=>{
     const id=nextId('MBR',S.membres);
     const pinInit='1234';
