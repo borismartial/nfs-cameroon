@@ -284,6 +284,63 @@ body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-he
   <div class="bottom-btn"><button class="main-btn" id="saisieBtn" onclick="confirmerCollecte()">Valider la collecte</button></div>
 </div>
 
+<!-- ════ DEMANDE DE CRÉDIT COLLECTE ════ -->
+<div id="creditScreen" class="screen">
+  <div class="app-header"><span class="back-btn" onclick="goTo('profilScreen')">←</span><h2>Demande de crédit collecteur</h2><span></span></div>
+  <div class="form-screen">
+    <div style="background:#F0F9FF;border-radius:10px;padding:11px 13px;margin-bottom:14px;font-size:12px;color:var(--navy)">
+      Solde personnel actuel : <b id="creditSoldeActuel">0 FCFA</b>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Motif *</label>
+      <select class="form-select" id="creditMotif">
+        <option value="Crédit collecte">Crédit collecte</option>
+        <option value="Avance sur tournée">Avance sur tournée</option>
+        <option value="Fonds de roulement">Fonds de roulement</option>
+        <option value="Autre">Autre</option>
+      </select>
+    </div>
+
+    <div class="amount-display"><div class="lbl">Montant du crédit</div><div class="val" id="creditDisp">0</div><div style="font-size:12px;color:var(--muted)">FCFA</div></div>
+    <div class="form-group"><label class="form-label">Montant souhaité (FCFA) *</label><input class="form-input" id="creditMontant" type="number" min="1" inputmode="numeric" oninput="document.getElementById('creditDisp').textContent=fmtN(this.value)"></div>
+    <div class="form-group"><label class="form-label">Durée (mois, max 12) *</label><input class="form-input" id="creditDuree" type="number" min="1" max="12" value="6"></div>
+    <div class="form-group"><label class="form-label">Garantie proposée</label><input class="form-input" id="creditGarantie" placeholder="Ex: Caution, retenue sur commission"></div>
+
+    <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:11px;margin-top:8px;font-size:11px;color:#92400E">
+      📌 Cette demande sera étudiée par votre superviseur. Votre solde personnel sera crédité automatiquement dès l'approbation dans le logiciel admin.
+    </div>
+  </div>
+  <div class="bottom-btn"><button class="main-btn gold" onclick="confirmerDemandeCredit()">Soumettre la demande</button></div>
+</div>
+
+<!-- ════ VIREMENT VERS UN MEMBRE (à partir du solde collecteur) ════ -->
+<div id="virementScreen" class="screen">
+  <div class="app-header"><span class="back-btn" onclick="goTo('profilScreen')">←</span><h2>Virement vers un membre</h2><span></span></div>
+  <div class="form-screen">
+    <div style="background:#F0F9FF;border-radius:10px;padding:11px 13px;margin-bottom:14px;font-size:12px;color:var(--navy)">
+      Solde personnel disponible : <b id="virementSoldeActuel">0 FCFA</b>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">N° membre bénéficiaire *</label>
+      <input class="form-input" id="virementDestId" placeholder="MBR-0000000" oninput="lookupVirementDest()">
+      <div id="virementDestName" class="form-hint"></div>
+    </div>
+
+    <div class="amount-display"><div class="lbl">Montant du virement</div><div class="val" id="virementDisp">0</div><div style="font-size:12px;color:var(--muted)">FCFA</div></div>
+    <div class="form-group"><label class="form-label">Montant (FCFA) *</label><input class="form-input" id="virementMontant" type="number" min="1" inputmode="numeric" oninput="document.getElementById('virementDisp').textContent=fmtN(this.value)"></div>
+    <div class="form-group"><label class="form-label">Motif</label><input class="form-input" id="virementMotif" placeholder="Ex: Remise des fonds collectés"></div>
+
+    <div class="form-group">
+      <label class="form-label">Confirmation du membre bénéficiaire</label>
+      <input class="form-input" id="virementConfirmation" placeholder="Code de confirmation">
+      <div class="form-hint">Preuve que le membre a bien reçu les fonds en main</div>
+    </div>
+  </div>
+  <div class="bottom-btn"><button class="main-btn navy" onclick="confirmerVirementClient()">Exécuter le virement</button></div>
+</div>
+
 <!-- ════ REÇU ════ -->
 <div id="recuScreen" class="screen">
   <div class="app-header"><span></span><h2>Reçu de collecte</h2><span></span></div>
@@ -320,7 +377,11 @@ body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-he
   <div class="app-header"><span class="back-btn" onclick="goHome()">←</span><h2>Mon profil</h2><span></span></div>
   <div class="scrollable" style="padding:13px">
     <div id="profilContent"></div>
-    <button class="main-btn red" style="margin-top:14px" onclick="logout()">Se déconnecter</button>
+    <div style="display:flex;gap:8px;margin-top:14px">
+      <button class="main-btn gold" style="flex:1" onclick="ouvrirDemandeCredit()">💳 Crédit collecteur</button>
+      <button class="main-btn navy" style="flex:1" onclick="ouvrirVirementClient()">↔️ Virement membre</button>
+    </div>
+    <button class="main-btn red" style="margin-top:10px" onclick="logout()">Se déconnecter</button>
   </div>
   <div class="bottom-nav">
     <div class="nav-tab" onclick="goHome()"><div class="nav-icon">🏠</div><div class="nav-label">Accueil</div></div>
