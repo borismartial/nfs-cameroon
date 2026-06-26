@@ -1005,19 +1005,29 @@ async function validateMPin(){
 
 // ── INITIALISATION ───────────────────────────────────────────
 window.addEventListener('load', async () => {
-  document.getElementById('loginLogo').src = LOGO_SRC;
-  DB = await openDB();
+  try {
+    document.getElementById('loginLogo').src = LOGO_SRC;
+    DB = await openDB();
 
-  // Restaurer une session existante si l'app a été fermée puis réouverte
-  // (le commercial reste connecté tant qu'il ne se déconnecte pas explicitement)
-  const lastSessionId = sessionStorage.getItem('nfs_collecteur_session');
-  if (lastSessionId) {
-    const commercial = await idbGet('commercial', lastSessionId);
-    if (commercial) {
-      ME = commercial;
-      await chargerPortefeuille();
-      goHome();
+    // Restaurer une session existante si l'app a été fermée puis réouverte
+    // (le commercial reste connecté tant qu'il ne se déconnecte pas explicitement)
+    const lastSessionId = sessionStorage.getItem('nfs_collecteur_session');
+    if (lastSessionId) {
+      try {
+        const commercial = await idbGet('commercial', lastSessionId);
+        if (commercial) {
+          ME = commercial;
+          await chargerPortefeuille();
+          goHome();
+        }
+      } catch(sessionErr) {
+        console.error('Erreur restauration session:', sessionErr);
+        sessionStorage.removeItem('nfs_collecteur_session');
+      }
     }
+  } catch(initErr) {
+    console.error('Erreur initialisation app:', initErr);
+    toast('Erreur de chargement — rechargez la page','err');
   }
 
   // Cycle de synchronisation périodique en arrière-plan
