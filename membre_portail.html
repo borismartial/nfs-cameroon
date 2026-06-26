@@ -862,7 +862,7 @@ function compressImage(dataUrl, maxWidth, quality) {
 
 
 // ── DATA ─────────────────────────────────────────────────────
-const DEMO_PINS={'MBR-0000042':'1234','MBR-0000091':'5678','MBR-0000128':'9012'};
+// DEMO_PINS supprimée — plus aucun PIN de démonstration codé en dur
 let ME=null, pinBuf='', mPinBuf='', pendingAction=null;
 function lsGet(k){return JSON.parse(localStorage.getItem(k)||'[]');}
 function lsSet(k,v){localStorage.setItem(k,JSON.stringify(v));}
@@ -892,16 +892,9 @@ async function loadAgences(){
   });
 }
 
-function ensureDemo(){
-  let m=getMembres();const ids=m.map(x=>x.id);
-  const demos=[
-    {id:'MBR-0000042',ccId:'CC-0000042',epId:'EP-0000042',nom:'KAMGA',prenom:'Paul',tel:'+237677123456',email:'p.kamga@nfs.cm',profession:'Commerçant',adresse:'Akwa, Douala',soldeCC:350000,soldeEP:1250000,pin:'1234',pinAChanger:false,statut:'actif',dateAdhesion:'2025-01-15',agence:'AG01'},
-    {id:'MBR-0000091',ccId:'CC-0000091',epId:'EP-0000091',nom:'NKENG',prenom:'Marie',tel:'+237699876543',email:'m.nkeng@nfs.cm',profession:'Infirmière',adresse:'Bonanjo, Douala',soldeCC:80000,soldeEP:425000,pin:'5678',pinAChanger:false,statut:'actif',dateAdhesion:'2025-03-08',agence:'AG02'},
-  ];
-  let changed=false;
-  demos.forEach(d=>{if(!ids.includes(d.id)){m.push(d);changed=true;}});
-  if(changed) lsSet('nfs_membres',m);
-}
+// ensureDemo() supprimée — elle recréait automatiquement 2 faux membres démo
+// (KAMGA Paul, NKENG Marie) à chaque chargement de l'app, ce qui empêchait
+// toute réinitialisation propre des données. Plus aucune donnée fictive n'est injectée.
 
 // ── UTILS ────────────────────────────────────────────────────
 function fmtN(n){return (parseFloat(n)||0).toLocaleString('fr-FR');}
@@ -956,8 +949,7 @@ function doLogin(){
   const m=membres.find(x=>x.id===id);
   if(m){
     const mPin=String(m.pin||'').trim();
-    const demoPin=DEMO_PINS[id]||'';
-    if(mPin===pin||demoPin===pin){
+    if(mPin===pin){
       ME=m;
       // Vérifier si PIN doit être changé à la première connexion
       if(m.pinAChanger===true||m.pinAChanger==='true'){
@@ -1005,8 +997,7 @@ function updateMDots(){for(let i=0;i<4;i++) document.getElementById('md'+i).clas
 async function validateMPin(){
   const pin=mPinBuf;
   const mPin=String(ME.pin||'').trim();
-  const demoPin=DEMO_PINS[ME.id]||'';
-  if(pin===mPin||pin===demoPin){
+  if(pin===mPin){
     const actionToRun = pendingAction; // capturer AVANT de fermer la modal
     closePinModal(); // celle-ci met pendingAction à null
     if(typeof actionToRun==='function'){
@@ -1565,8 +1556,7 @@ function changerPin(){
   const nouv=document.getElementById('pinNouv').value.trim();
   const conf=document.getElementById('pinConf').value.trim();
   const mPin=String(ME.pin||'').trim();
-  const demoPin=DEMO_PINS[ME.id]||'';
-  if(actuel!==mPin&&actuel!==demoPin) return toast('PIN actuel incorrect','err');
+  if(actuel!==mPin) return toast('PIN actuel incorrect','err');
   if(nouv.length!==4||!/^\d+$/.test(nouv)) return toast('Nouveau PIN : 4 chiffres requis','err');
   if(nouv!==conf) return toast('Les nouveaux PINs ne correspondent pas','err');
   const membres=getMembres();
@@ -1859,7 +1849,18 @@ function showRibPreview(input){
 }
 
 // ── MISE À JOUR APPLICATION ───────────────────────────────────
-const APP_VERSION = '1.0';
+const APP_VERSION = '1.1';
+
+// Purge automatique du cache local si la version de l'app a changé.
+// Évite que des données obsolètes (anciens membres/transactions en cache)
+// persistent après une mise à jour ou une réinitialisation côté serveur.
+function purgeCacheSiNouvelleVersion(){
+  const lastVersion = localStorage.getItem('nfs_app_version');
+  if(lastVersion !== APP_VERSION){
+    ['nfs_membres','nfs_transactions','nfs_credits','nfs_demandes','nfs_agences'].forEach(k => localStorage.removeItem(k));
+    localStorage.setItem('nfs_app_version', APP_VERSION);
+  }
+}
 const APP_VERSION_URL = 'https://script.google.com/macros/s/AKfycbyIzgPsZuL_C9lvpz2jlfwHyfabhjMk8bWcWnAyrAupofc1cwks3hTPSHmYFUBXQ98/exec?action=get&table=nfs_versions&t=';
 
 async function checkUpdate(){
@@ -1898,7 +1899,8 @@ function doUpdate(url){
 
 // ── INIT ─────────────────────────────────────────────────────
 window.addEventListener('load',async()=>{
-  ensureDemo();switchTab('conn');showScreen('loginScreen');
+  purgeCacheSiNouvelleVersion();
+  switchTab('conn');showScreen('loginScreen');
   loadBanquesCM();
   loadAgences();
   await gasPull('nfs_membres','nfs_membres');
