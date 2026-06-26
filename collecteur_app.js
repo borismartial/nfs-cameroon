@@ -270,7 +270,17 @@ window.addEventListener('online', () => {
 window.addEventListener('offline', () => { isOnline = false; setSyncIndicator('offline'); });
 
 // ── CONNEXION ────────────────────────────────────────────────
-function pinKey(k){if(pinBuf.length>=4)return;pinBuf+=String(k);updateDots();if(pinBuf.length===4)setTimeout(doLogin,200);}
+function pinKey(k){
+  if(pinBuf.length>=4)return;
+  pinBuf+=String(k);
+  updateDots();
+  if(pinBuf.length===4){
+    setTimeout(() => {
+      try { doLogin(); }
+      catch(e){ console.error('Erreur appel doLogin:', e); toast('Erreur technique','err'); }
+    }, 200);
+  }
+}
 function pinDel(){pinBuf=pinBuf.slice(0,-1);updateDots();}
 function updateDots(){for(let i=0;i<4;i++) document.getElementById('d'+i).classList.toggle('filled',i<pinBuf.length);}
 
@@ -313,6 +323,7 @@ async function doLogin(){
         return;
       }
       ME = commercial;
+      sessionStorage.setItem('nfs_collecteur_session', ME.id);
       await chargerPortefeuille();
       goHome();
       return;
@@ -358,6 +369,7 @@ async function chargerPortefeuille(){
 }
 
 function logout(){
+  sessionStorage.removeItem('nfs_collecteur_session');
   ME = null; portefeuille = []; pinBuf=''; updateDots();
   document.getElementById('loginId').value='';
   document.getElementById('loginError').style.display='none';
@@ -1020,15 +1032,3 @@ window.addEventListener('load', async () => {
 
   setSyncIndicator(navigator.onLine ? 'ok' : 'offline');
 });
-
-// Persister la session à la connexion réussie
-const _origDoLogin = doLogin;
-doLogin = async function(){
-  await _origDoLogin();
-  if (ME) sessionStorage.setItem('nfs_collecteur_session', ME.id);
-};
-const _origLogout = logout;
-logout = function(){
-  sessionStorage.removeItem('nfs_collecteur_session');
-  _origLogout();
-};
