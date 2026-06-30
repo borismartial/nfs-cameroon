@@ -188,11 +188,13 @@ body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-he
         <div class="stat-box"><div class="stat-label">Clients visités</div><div class="stat-val" id="heroVisites">0 / 0</div></div>
       </div>
     </div>
-    <div class="quick-actions">
+    <div class="quick-actions" style="grid-template-columns:repeat(3,1fr)">
       <div class="qa-btn" onclick="goTo('tourneeScreen')"><div class="qa-icon" style="background:#DBEAFE">🗺️</div><div class="qa-label">Tournée</div></div>
       <div class="qa-btn" onclick="goTo('rechercheScreen')"><div class="qa-icon" style="background:#FEF3C7">🔍</div><div class="qa-label">Rechercher</div></div>
       <div class="qa-btn" onclick="goTo('clotureScreen')"><div class="qa-icon" style="background:#DCFCE7">🔒</div><div class="qa-label">Clôture</div></div>
       <div class="qa-btn" onclick="goTo('perfScreen')"><div class="qa-icon" style="background:#FEE2E2">📊</div><div class="qa-label">Performance</div></div>
+      <div class="qa-btn" onclick="ouvrirDemandeCredit()"><div class="qa-icon" style="background:#FEF3C7">💳</div><div class="qa-label">Crédit collecteur</div></div>
+      <div class="qa-btn" onclick="ouvrirVirementClient()"><div class="qa-icon" style="background:#E0E7FF">↔️</div><div class="qa-label">Virement membre</div></div>
     </div>
     <div class="section">
       <div class="section-title">Clients restants <span class="see-all" onclick="goTo('tourneeScreen')">Tout voir</span></div>
@@ -286,7 +288,7 @@ body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-he
 
 <!-- ════ DEMANDE DE CRÉDIT COLLECTE ════ -->
 <div id="creditScreen" class="screen">
-  <div class="app-header"><span class="back-btn" onclick="goTo('profilScreen')">←</span><h2>Demande de crédit collecteur</h2><span></span></div>
+  <div class="app-header"><span class="back-btn" onclick="goHome()">←</span><h2>Demande de crédit collecteur</h2><span></span></div>
   <div class="form-screen">
     <div style="background:#F0F9FF;border-radius:10px;padding:11px 13px;margin-bottom:14px;font-size:12px;color:var(--navy)">
       Solde personnel actuel : <b id="creditSoldeActuel">0 FCFA</b>
@@ -316,7 +318,7 @@ body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-he
 
 <!-- ════ VIREMENT VERS UN MEMBRE (à partir du solde collecteur) ════ -->
 <div id="virementScreen" class="screen">
-  <div class="app-header"><span class="back-btn" onclick="goTo('profilScreen')">←</span><h2>Virement vers un membre</h2><span></span></div>
+  <div class="app-header"><span class="back-btn" onclick="goHome()">←</span><h2>Virement vers un membre</h2><span></span></div>
   <div class="form-screen">
     <div style="background:#F0F9FF;border-radius:10px;padding:11px 13px;margin-bottom:14px;font-size:12px;color:var(--navy)">
       Solde personnel disponible : <b id="virementSoldeActuel">0 FCFA</b>
