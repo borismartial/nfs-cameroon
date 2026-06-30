@@ -3209,22 +3209,31 @@ function doUpdate(url){
 
 // ── INIT ─────────────────────────────────────────────────────
 window.addEventListener('load',async()=>{
-  purgeCacheSiNouvelleVersion();
-  switchTab('conn');showScreen('loginScreen');
-  loadBanquesCM();
-  loadAgences();
-  synchroniserAdhesionsEnAttente();
-  await gasPull('nfs_membres','nfs_membres');
-  await Promise.all([gasPull('nfs_transactions','nfs_transactions'),gasPull('nfs_credits','nfs_credits'),gasPull('nfs_demandes','nfs_demandes')]);
-  checkUpdate();
-  // Init mode retrait
-  const modeRadio = document.querySelector('input[name="retraitMode"]');
-  if(modeRadio) modeRadio.checked = true;
-  setInterval(async()=>{
+  try {
+    purgeCacheSiNouvelleVersion();
+    switchTab('conn');showScreen('loginScreen');
+    loadBanquesCM();
+    loadAgences();
+    synchroniserAdhesionsEnAttente();
     await gasPull('nfs_membres','nfs_membres');
-    await gasPull('nfs_transactions','nfs_transactions');
-    await gasPull('nfs_credits','nfs_credits');
-    if(ME){const f=getMembres().find(m=>m.id===ME.id);if(f)ME=f;}
+    await Promise.all([gasPull('nfs_transactions','nfs_transactions'),gasPull('nfs_credits','nfs_credits'),gasPull('nfs_demandes','nfs_demandes')]);
+    checkUpdate();
+    // Init mode retrait
+    const modeRadio = document.querySelector('input[name="retraitMode"]');
+    if(modeRadio) modeRadio.checked = true;
+  } catch(err) {
+    console.error('Erreur initialisation app:', err);
+    toast('Erreur de chargement — rechargez la page','err');
+  }
+  setInterval(async()=>{
+    try {
+      await gasPull('nfs_membres','nfs_membres');
+      await gasPull('nfs_transactions','nfs_transactions');
+      await gasPull('nfs_credits','nfs_credits');
+      if(ME){const f=getMembres().find(m=>m.id===ME.id);if(f)ME=f;}
+    } catch(err) {
+      console.error('Erreur synchronisation périodique:', err);
+    }
   },10000);
 });
 </script>
