@@ -577,6 +577,19 @@ body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-he
       <div style="background:#DBEAFE;border-radius:10px;padding:10px 13px;margin-bottom:14px;font-size:12px;color:#1D4ED8">
         ℹ️ Votre demande sera soumise à l'approbation de l'administrateur avant crédit sur votre compte.
       </div>
+
+      <!-- Prompt 6 : remboursement anticipé de crédit via le dépôt -->
+      <div id="depotRemboursementAnticipeBox" style="display:none;background:#F5F3FF;border:1px solid #DDD6FE;border-radius:10px;padding:12px;margin-bottom:14px">
+        <label style="display:flex;align-items:flex-start;gap:9px;font-size:12px;cursor:pointer;font-weight:600;color:#5B21B6">
+          <input type="checkbox" id="depotRembAnticipeCheck" onchange="toggleDepotRemboursementAnticipe()">
+          <span>Ce versement est destiné au remboursement anticipé de mon crédit <b id="depotRembAnticipeCreditId"></b></span>
+        </label>
+        <div id="depotRembAnticipeDetail" style="display:none;font-size:11px;color:#5B21B6;margin-top:8px;padding-top:8px;border-top:1px solid #DDD6FE">
+          Montant à verser pour solder le crédit : <b id="depotRembAnticipeMontant">—</b><br>
+          <span style="color:#7C3AED">Une fois votre dépôt validé par l'administrateur, votre compte courant sera automatiquement soldé de ce montant pour clôturer le crédit.</span>
+        </div>
+      </div>
+
       <div class="amount-display"><div class="lbl">Montant à déposer</div><div class="val" id="depotDisp">0</div><div style="font-size:12px;color:var(--muted)">FCFA</div></div>
       <div class="form-group"><label class="form-label">Compte à créditer</label><select class="form-select" id="depotCompte"><option value="EP">Compte Épargne (EP)</option><option value="CC">Compte Courant (CC)</option></select></div>
       <div class="form-group"><label class="form-label">Montant (FCFA) *</label><input class="form-input" id="depotMontant" type="number" min="1" placeholder="Ex: 50 000" oninput="document.getElementById('depotDisp').textContent=fmtN(this.value)"></div>
@@ -1410,6 +1423,7 @@ function goTo(screen){
   if(screen==='creditScreen') renderCreditScreen();
   if(screen==='virementScreen') afficherQuotaVirement();
   if(screen==='cepScreen') renderCEPScreen();
+  if(screen==='depotScreen') initDepotRemboursementAnticipe();
   showScreen(screen);
 }
 
@@ -1841,6 +1855,68 @@ async function lancerRetraitAutomatique(montant, compte, modeInfo, motif){
   });
 }
 
+// ── DÉTECTION DE TRANSACTION IDENTIQUE — Prompt 5 ────────────────────
+// Recherche, parmi les opérations du même jour, celles déjà initiées par CE
+// membre avec le même type, le même compte et le même montant (peu importe
+// leur statut : en attente ou déjà approuvée — l'objectif est de repérer une
+// saisie répétée, volontaire ou accidentelle). On compare sur le champ "date"
+// (format ISO AAAA-MM-JJ, fiable) plutôt que sur "dateAff" (format français
+// localisé, peu fiable à re-parser).
+function detecterTransactionDupliquee(type, compte, montant){
+  const aujourdhui = isoDay();
+  const occurrences = getTx().filter(t=>
+    t.membreId===ME.id &&
+    t.type===type &&
+    t.compte===compte &&
+    Math.abs((parseFloat(t.montant)||0) - montant) < 1 &&
+    (t.date||'')===aujourdhui
+  ).length;
+  return { occurrences };
+}
+
+// ── REMBOURSEMENT ANTICIPÉ DE CRÉDIT VIA LE DÉPÔT — Prompt 6 ────────────
+let creditRemboursementAnticipeActif = null;
+
+function initDepotRemboursementAnticipe(){
+  const box = document.getElementById('depotRemboursementAnticipeBox');
+  const check = document.getElementById('depotRembAnticipeCheck');
+  check.checked = false;
+  creditRemboursementAnticipeActif = null;
+  document.getElementById('depotRembAnticipeDetail').style.display = 'none';
+
+  const creditEnCours = getCredits().find(c=>c.membreId===ME.id && c.statut==='encours');
+  if(!creditEnCours){ box.style.display = 'none'; return; }
+
+  box.style.display = 'block';
+  document.getElementById('depotRembAnticipeCreditId').textContent = creditEnCours.id;
+  creditRemboursementAnticipeActif = creditEnCours;
+}
+
+function toggleDepotRemboursementAnticipe(){
+  const checked = document.getElementById('depotRembAnticipeCheck').checked;
+  const detail = document.getElementById('depotRembAnticipeDetail');
+  const compteSelect = document.getElementById('depotCompte');
+  const montantInput = document.getElementById('depotMontant');
+  const dispEl = document.getElementById('depotDisp');
+
+  if(checked && creditRemboursementAnticipeActif){
+    const k = calculCredit(creditRemboursementAnticipeActif);
+    detail.style.display = 'block';
+    document.getElementById('depotRembAnticipeMontant').textContent = fmt(k.remboursementAnticipe);
+    // Le remboursement de crédit se solde toujours via le compte courant (CC),
+    // en cohérence avec soldeCreditAnticipe() côté admin.
+    compteSelect.value = 'CC';
+    compteSelect.disabled = true;
+    montantInput.value = k.remboursementAnticipe;
+    montantInput.disabled = true;
+    dispEl.textContent = fmtN(k.remboursementAnticipe);
+  } else {
+    detail.style.display = 'none';
+    compteSelect.disabled = false;
+    montantInput.disabled = false;
+  }
+}
+
 async function demanderOp(type){
   const compteId = type==='DEPOT' ? 'depotCompte' : 'retraitCompte';
   const montantId = type==='DEPOT' ? 'depotMontant' : 'retraitMontant';
@@ -1852,6 +1928,17 @@ async function demanderOp(type){
   const motif = document.getElementById(motifId)?.value || type;
 
   if(!montant || montant<=0) return toast('Montant invalide','err');
+
+  // ── ALERTE TRANSACTION IDENTIQUE — dès la 2e occurrence ──────────────
+  // Si le membre a déjà initié une opération identique (même type, même
+  // compte, même montant) récemment, on l'avertit explicitement avant de
+  // continuer — utile pour éviter les doubles saisies accidentelles.
+  const doublonInfo = detecterTransactionDupliquee(type, compte, montant);
+  if(doublonInfo.occurrences >= 1){
+    const confirmMsg = '⚠️ Vous avez déjà initié '+(doublonInfo.occurrences===1?'une opération identique':doublonInfo.occurrences+' opérations identiques')+
+      ' ('+(type==='DEPOT'?'dépôt':'retrait')+' de '+fmt(montant)+' sur le compte '+compte+") aujourd'hui.\n\nVoulez-vous vraiment soumettre cette nouvelle demande ?";
+    if(!confirm(confirmMsg)) return;
+  }
 
   // Vérifier que le solde du compte sélectionné couvre le montant demandé (retrait uniquement)
   if(type==='RETRAIT'){
@@ -1917,6 +2004,11 @@ async function demanderOp(type){
   const ribPhotoFile = document.getElementById('retraitRibPhoto')?.files?.[0];
   const ribDocFile = document.getElementById('retraitRibDoc')?.files?.[0];
   const capturedRibFile = ribCamFile || ribPhotoFile || ribDocFile || null;
+  // Prompt 6 : si le membre a coché "remboursement anticipé de crédit", on associe
+  // l'ID du crédit concerné à cette transaction de dépôt, pour que l'admin puisse
+  // solder automatiquement le crédit dès l'approbation du dépôt.
+  const capturedRembCreditId = (type==='DEPOT' && document.getElementById('depotRembAnticipeCheck')?.checked && creditRemboursementAnticipeActif)
+    ? creditRemboursementAnticipeActif.id : null;
 
   openPinModal('🔐 Confirmer la demande', 'Entrez votre PIN personnel pour valider cette demande', () => {
     try {
@@ -1928,11 +2020,12 @@ async function demanderOp(type){
         type: capturedType,
         montant: capturedMontant,
         compte: capturedCompte,
-        motif: capturedMotif,
+        motif: capturedRembCreditId ? ('Remboursement anticipé crédit '+capturedRembCreditId) : capturedMotif,
         statut: 'attente',
         date: isoDay(),
         dateAff: todayFr(),
         ...(capturedModeInfo ? {modeRetrait: JSON.stringify(capturedModeInfo)} : {}),
+        ...(capturedRembCreditId ? {remboursementCreditId: capturedRembCreditId} : {}),
         recu: ''
       };
       txs.push(tx);
@@ -2229,14 +2322,23 @@ function calculCredit(cr){
   const pct = duree > 0 ? Math.min(100, Math.round((rembourse / (mensualite * duree)) * 100)) : 0;
   const enRetard = mensualitesImpayees > 0;
 
-  // Remboursement anticipé : capital restant + intérêts du mois en cours (pas de pénalité ajoutée par défaut)
-  const remboursementAnticipe = capitalRestant;
+  // Remboursement anticipé — RECALCULÉ via tableau d'amortissement (capital réellement
+  // dû, hors intérêts futurs non courus), en cohérence avec le même calcul côté admin
+  // (microfinance_gestion.html / calculCredit). Voir la note dans ce fichier pour le détail.
+  let soldeAmorti = M;
+  for(let i=0; i<mensualitesPayees && soldeAmorti>0; i++){
+    const interetMois = soldeAmorti * r;
+    const capitalMois = Math.max(0, mensualite - interetMois);
+    soldeAmorti = Math.max(0, soldeAmorti - capitalMois);
+  }
+  const remboursementAnticipe = duree>0 ? Math.round(soldeAmorti) : 0;
+  const economieInteretsAnticipe = Math.max(0, Math.round(capitalRestant - remboursementAnticipe));
 
   return {
     montantInitial: M,
     taux, duree, mensualite,
     mensualitesPayees, mensualitesRestantes, mensualitesDues, mensualitesImpayees,
-    capitalRestant, montantImpaye, remboursementAnticipe,
+    capitalRestant, montantImpaye, remboursementAnticipe, economieInteretsAnticipe,
     rembourse, pct, enRetard,
     dateDerniereEcheance, dateProchaineEcheance,
     dateDebut: dateDebut.toLocaleDateString('fr-FR')

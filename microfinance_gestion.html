@@ -213,6 +213,7 @@ tr:hover td{background:#F8FAFC;}
   <div class="nav-item" onclick="nav('cep')"><span>🎯</span>Épargne Projet</div>
   <div class="nav-sec">Administration</div>
   <div class="nav-item" onclick="nav('demandes')" id="nav-demandes"><span>✍️</span>Demandes adhésion<span class="nav-badge" id="badge-demandes" style="display:none">0</span></div>
+  <div class="nav-item" onclick="nav('media')"><span>📸</span>Pièces jointes</div>
   <div class="nav-item" onclick="nav('agences')"><span>🏢</span>Agences</div>
   <div class="nav-item" onclick="nav('commerciaux')"><span>🚶</span>Commerciaux</div>
   <div class="nav-item" onclick="nav('rapports')"><span>📈</span>Rapports</div>
@@ -744,7 +745,7 @@ function validateAdminPin(){
 
 // ── NAVIGATION ───────────────────────────────────────────────
 const PAGE_TITLES={dashboard:'Tableau de bord',membres:'Membres',depots:'Dépôts & Retraits',
-  virements:'Virements',credits:'Crédits',cep:'Épargne Projet',demandes:"Demandes d'adhésion",agences:'Agences',commerciaux:'Commerciaux',rapports:'Rapports'};
+  virements:'Virements',credits:'Crédits',cep:'Épargne Projet',demandes:"Demandes d'adhésion",media:'Pièces jointes',agences:'Agences',commerciaux:'Commerciaux',rapports:'Rapports'};
 let currentPage='dashboard';
 function nav(page){
   currentPage=page;
@@ -754,7 +755,7 @@ function nav(page){
   const mpt = document.getElementById('mobilePageTitle');
   if(mpt) mpt.textContent = PAGE_TITLES[page]||page;
   ({dashboard:renderDash,membres:renderMembres,depots:renderDepots,virements:renderVirements,
-    credits:renderCredits,cep:renderCEP,demandes:renderDemandes,agences:renderAgences,commerciaux:renderCommerciaux,rapports:renderRapports})[page]?.();
+    credits:renderCredits,cep:renderCEP,demandes:renderDemandes,media:renderMedia,agences:renderAgences,commerciaux:renderCommerciaux,rapports:renderRapports})[page]?.();
   setTimeout(autoLabelTables, 30);
   closeMobileMenu();
 }
@@ -1016,14 +1017,43 @@ function approuverTx(id){
   tx.statut='approuve';
   m.statut='actif';
   m.derniereOp=isoDay();
+
+  // ── Prompt 6 : dépôt destiné au remboursement anticipé d'un crédit ──────
+  // Le dépôt vient d'être crédité normalement ci-dessus ; on solde maintenant
+  // le crédit concerné en débitant le compte courant du montant recalculé
+  // (même logique que soldeCreditAnticipe, déclenchée automatiquement ici
+  // plutôt que manuellement, puisque le membre l'a explicitement demandé
+  // depuis le formulaire de dépôt).
+  let creditSolde = null;
+  if(tx.remboursementCreditId){
+    const cr = S.credits.find(c=>c.id===tx.remboursementCreditId);
+    if(cr && cr.statut==='encours'){
+      const k = calculCredit(cr);
+      if((parseFloat(m.soldeCC)||0) >= k.remboursementAnticipe){
+        m.soldeCC = (parseFloat(m.soldeCC)||0) - k.remboursementAnticipe;
+        cr.rembourse = (parseFloat(cr.rembourse)||0) + k.remboursementAnticipe;
+        cr.statut = 'solde';
+        cr.dateSolde = isoDay();
+        creditSolde = { cr, montant: k.remboursementAnticipe };
+      } else {
+        toast('⚠️ Dépôt approuvé, mais solde CC insuffisant pour solder automatiquement le crédit '+cr.id+' — à traiter manuellement','err');
+      }
+    }
+  }
+
   lsSave();
   gasPush('nfs_membres',m);
   gasPush('nfs_transactions',tx);
+  if(creditSolde){
+    const txSolde = addTx(m.id,'RETRAIT',creditSolde.montant,'CC','Remboursement anticipé crédit '+creditSolde.cr.id+' (via dépôt '+tx.id+')','approuve');
+    gasPush('nfs_credits', creditSolde.cr);
+    gasPush('nfs_transactions', txSolde);
+  }
   gasPost({
     action:'sendNotificationSMS', membreId: m.id, type: tx.type, montant: parseFloat(tx.montant),
     infos: { nouveauSolde: tx.compte==='CC'?m.soldeCC:m.soldeEP }
   });
-  toast("Opération approuvée et compte mis à jour","ok");
+  toast(creditSolde ? "Dépôt approuvé — crédit "+creditSolde.cr.id+" soldé par anticipation" : "Opération approuvée et compte mis à jour","ok");
   renderDash();
 }
 
@@ -1198,7 +1228,7 @@ function renderDepots(){
           <td>${badgeModePaiement(t.modePaiement)}</td>
           <td><span class="acc-pill acc-${t.compte==='CC'?'cc':'ep'}">${t.compte}</span></td>
           <td class="fw7">${fmt(t.montant)}</td>
-          <td class="fs11">${t.motif||'—'}</td>
+          <td class="fs11">${t.motif||'—'}${t.remboursementCreditId?'<br><span style="display:inline-block;margin-top:3px;padding:1px 6px;border-radius:6px;background:#EDE9FE;color:#5B21B6;font-size:9px;font-weight:700">🎯 Solde crédit '+t.remboursementCreditId+'</span>':''}</td>
           <td>${formatPreuve(t.recu)}</td>
           <td>${t.type==='RETRAIT'?formatModeRetrait(t.modeRetrait, t.ribUrl):'—'}</td>
           <td><div style="display:flex;gap:4px">
@@ -2477,6 +2507,102 @@ function retirerDuPortefeuille(membreId){
 }
 
 // ── RAPPORTS ─────────────────────────────────────────────────
+// ── OUTIL DE TRAITEMENT DES IMAGES / PIÈCES JOINTES — Prompt 3 ──────────
+// Regroupe en un seul endroit TOUTES les images envoyées par les membres au
+// cours de leurs transactions (preuves de dépôt, RIB de virement, garanties
+// de crédit, pièces d'identité et photos d'adhésion), au lieu d'avoir à les
+// chercher une par une dans chaque onglet. Permet aussi de traiter (approuver/
+// rejeter) directement les preuves de dépôt encore en attente.
+let mediaFiltreActuel = 'tous';
+
+function collecterToutesLesPieces(){
+  const items = [];
+  const vus = new Set(); // dédoublonnage par URL
+
+  const ajouter = (url, item) => {
+    if(!url || !url.startsWith('http') || vus.has(url)) return;
+    vus.add(url);
+    items.push(Object.assign({url}, item));
+  };
+
+  // Preuves de dépôt
+  S.transactions.filter(t=>t.type==='DEPOT').forEach(t=>{
+    const m = getMembre(t.membreId);
+    ajouter(t.recu, {
+      categorie:'depot', label:'Preuve de dépôt', txId:t.id, statut:t.statut,
+      membre: m?m.nom+' '+m.prenom:t.membreId, membreId:t.membreId,
+      date: t.dateAff||t.date, detail: fmt(t.montant)+' · '+t.compte
+    });
+  });
+
+  // RIB de virement bancaire (retraits)
+  S.transactions.filter(t=>t.type==='RETRAIT' && t.ribUrl).forEach(t=>{
+    const m = getMembre(t.membreId);
+    ajouter(t.ribUrl, {
+      categorie:'rib', label:'RIB (virement bancaire)', txId:t.id, statut:t.statut,
+      membre: m?m.nom+' '+m.prenom:t.membreId, membreId:t.membreId,
+      date: t.dateAff||t.date, detail: fmt(t.montant)
+    });
+  });
+
+  // Garanties de crédit
+  S.credits.forEach(c=>{
+    const m = getMembre(c.membreId);
+    ajouter(c.garantieUrl, {
+      categorie:'garantie', label:'Garantie de crédit', txId:c.id, statut:c.statut,
+      membre: m?m.nom+' '+m.prenom:c.membreId, membreId:c.membreId,
+      date: c.date, detail: fmt(c.montant)
+    });
+  });
+
+  // Pièces d'adhésion (photo, CNI recto/verso) — depuis les demandes ET les membres
+  const sourcesAdhesion = [...S.demandes, ...S.membres];
+  sourcesAdhesion.forEach(d=>{
+    const label = d.ref ? 'Demande '+d.ref : d.id;
+    ajouter(d.photoUrl, { categorie:'adhesion', label:'Photo de profil', txId:label, statut:d.statut||'—', membre:d.nom+' '+d.prenom, membreId:d.membreId||d.id, date:d.date||d.dateAdhesion||'—', detail:'—' });
+    ajouter(d.cniRectoUrl, { categorie:'adhesion', label:"CNI — Recto", txId:label, statut:d.statut||'—', membre:d.nom+' '+d.prenom, membreId:d.membreId||d.id, date:d.date||d.dateAdhesion||'—', detail:'—' });
+    ajouter(d.cniVersoUrl, { categorie:'adhesion', label:"CNI — Verso", txId:label, statut:d.statut||'—', membre:d.nom+' '+d.prenom, membreId:d.membreId||d.id, date:d.date||d.dateAdhesion||'—', detail:'—' });
+  });
+
+  return items.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+}
+
+const MEDIA_CATEGORIES = { tous:'Tout', depot:'Preuves de dépôt', rib:'RIB virement', garantie:'Garanties crédit', adhesion:'Pièces adhésion' };
+
+function renderMedia(){
+  const toutes = collecterToutesLesPieces();
+  const filtrees = mediaFiltreActuel==='tous' ? toutes : toutes.filter(i=>i.categorie===mediaFiltreActuel);
+  const enAttenteDepots = toutes.filter(i=>i.categorie==='depot' && i.statut==='attente').length;
+
+  document.getElementById('content').innerHTML = `
+  <div class="tab-bar">
+    ${Object.keys(MEDIA_CATEGORIES).map(k=>`<div class="tab${mediaFiltreActuel===k?' active':''}" onclick="mediaFiltreActuel='${k}';renderMedia()">${MEDIA_CATEGORIES[k]} (${k==='tous'?toutes.length:toutes.filter(i=>i.categorie===k).length})</div>`).join('')}
+  </div>
+  ${enAttenteDepots>0 ? `<div class="card" style="border-color:#FDE68A;margin:12px 0"><div class="card-bd" style="background:#FFFBEB">
+    <div style="font-size:12px;font-weight:700;color:#92400E">⚠️ ${enAttenteDepots} preuve(s) de dépôt en attente de traitement</div>
+  </div></div>` : ''}
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px;margin-top:14px">
+    ${filtrees.length ? filtrees.map(item=>`
+      <div class="card" style="overflow:hidden">
+        <a href="${item.url}" target="_blank" style="display:block">
+          <img src="${item.url}" loading="lazy" style="width:100%;height:140px;object-fit:cover;background:#F1F5F9;display:block" onerror="this.style.display='none'">
+        </a>
+        <div class="card-bd" style="padding:10px">
+          <div style="font-size:11px;font-weight:700;color:var(--navy)">${item.label}</div>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">${item.membre} · ${item.membreId}</div>
+          <div style="font-size:10px;color:var(--muted)">${item.detail} · ${item.date}</div>
+          <div style="margin-top:6px;display:flex;gap:4px;align-items:center;flex-wrap:wrap">
+            <span class="st st-${item.statut}" style="font-size:9px">${item.statut}</span>
+            ${item.categorie==='depot' && item.statut==='attente' ? `
+              <button class="btn btn-s btn-sm" style="padding:3px 8px;font-size:9px" onclick="demanderApprob('${item.txId}','approuver')">✓</button>
+              <button class="btn btn-d btn-sm" style="padding:3px 8px;font-size:9px" onclick="demanderApprob('${item.txId}','rejeter')">✕</button>
+            ` : ''}
+          </div>
+        </div>
+      </div>`).join('') : '<div class="empty" style="grid-column:1/-1">Aucune pièce jointe dans cette catégorie</div>'}
+  </div>`;
+}
+
 function renderRapports(){
   const totalEP=S.membres.reduce((s,m)=>s+(parseFloat(m.soldeEP)||0),0);
   const totalCC=S.membres.reduce((s,m)=>s+(parseFloat(m.soldeCC)||0),0);

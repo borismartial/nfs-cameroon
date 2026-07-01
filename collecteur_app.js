@@ -339,6 +339,16 @@ async function doLogin(){
       ME = commercial;
       sessionStorage.setItem('nfs_collecteur_session', ME.id);
       await chargerPortefeuille();
+      // Prompt 8 : premier PIN reçu à l'inscription = générique — on force sa
+      // modification à la première connexion, exactement comme dans l'appli
+      // membre (mécanisme pinAChanger déjà en place côté backend/createCommercial).
+      if(ME.pinAChanger===true || ME.pinAChanger==='true'){
+        document.getElementById('forcePinNouv').value='';
+        document.getElementById('forcePinConf').value='';
+        document.getElementById('forcePinErr').style.display='none';
+        document.getElementById('forcePinModal').classList.add('open');
+        return;
+      }
       goHome();
       return;
     }
@@ -352,6 +362,28 @@ async function doLogin(){
     document.getElementById('loginError').style.display = 'block';
     pinBuf=''; updateDots();
   }
+}
+
+// ── CHANGEMENT DE PIN OBLIGATOIRE (première connexion) — Prompt 8 ──────
+async function validerForcePinChangeCollecteur(){
+  const nouv = document.getElementById('forcePinNouv').value.trim();
+  const conf = document.getElementById('forcePinConf').value.trim();
+  const err = document.getElementById('forcePinErr');
+  if(nouv.length!==4 || !/^\d+$/.test(nouv)){ err.textContent='Le PIN doit être 4 chiffres'; err.style.display='block'; return; }
+  if(nouv!==conf){ err.textContent='Les PINs ne correspondent pas'; err.style.display='block'; return; }
+
+  ME.pin = nouv;
+  ME.pinAChanger = false;
+  await idbPut('commercial', ME);
+
+  // Répercuter côté serveur (best-effort — si hors-ligne, le prochain rafraîchissement
+  // du portefeuille en ligne re-synchronisera ; le PIN reste valide localement entre-temps)
+  try{ await gasPostWithResponse({ action:'upsert', table:'nfs_commerciaux', row: ME }); }catch(e){}
+
+  document.getElementById('forcePinModal').classList.remove('open');
+  toast('PIN défini avec succès','ok');
+  await chargerPortefeuille();
+  goHome();
 }
 
 async function chargerPortefeuille(){
@@ -480,6 +512,52 @@ async function renderTournee(){
 }
 
 // ── RECHERCHE CLIENT ─────────────────────────────────────────
+// ── IDENTIFIER UN MEMBRE PAR TÉLÉPHONE (hors portefeuille) — Prompt 7 ──
+// Contrairement à filtrerRecherche() qui ne cherche que dans le portefeuille
+// assigné, cette fonction interroge l'ensemble des membres pour permettre au
+// collecteur de vérifier l'identité de n'importe quel membre sur le terrain
+// (nom, numéro matricule, types de comptes), sans pouvoir faire d'opération
+// financière dessus s'il n'est pas dans son portefeuille.
+async function identifierMembreParTel(){
+  const telRaw = document.getElementById('lookupTelInput').value.trim();
+  const resultEl = document.getElementById('lookupTelResult');
+  if(!telRaw){ resultEl.innerHTML = ''; return; }
+  const telNorm = telRaw.replace(/\D/g,'');
+
+  resultEl.innerHTML = '<div style="text-align:center;padding:10px;color:var(--muted);font-size:12px">Recherche en cours...</div>';
+
+  if(!navigator.onLine){
+    resultEl.innerHTML = '<div style="text-align:center;padding:10px;color:var(--red);font-size:12px">Connexion requise pour identifier un membre hors de votre portefeuille</div>';
+    return;
+  }
+
+  try{
+    const membres = await gasGet('nfs_membres');
+    if(!membres || !Array.isArray(membres)){
+      resultEl.innerHTML = '<div style="text-align:center;padding:10px;color:var(--red);font-size:12px">Erreur réseau — réessayez</div>';
+      return;
+    }
+    const trouve = membres.find(m => String(m.tel||'').replace(/\D/g,'').endsWith(telNorm.slice(-9)));
+    if(!trouve){
+      resultEl.innerHTML = '<div style="text-align:center;padding:10px;color:var(--muted);font-size:12px">Aucun membre trouvé avec ce numéro</div>';
+      return;
+    }
+    const produits = trouve.produits || 'Épargne';
+    resultEl.innerHTML = `
+      <div style="background:#F8FAFC;border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;align-items:center;gap:12px">
+        <div style="width:44px;height:44px;border-radius:50%;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;flex-shrink:0">${(trouve.nom||'?')[0]}${(trouve.prenom||'?')[0]}</div>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--navy)">${trouve.nom} ${trouve.prenom}</div>
+          <div style="font-size:11px;color:var(--blue);font-weight:600">${trouve.id}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Comptes : ${produits}</div>
+        </div>
+      </div>`;
+  }catch(e){
+    console.error('Erreur identifierMembreParTel:', e);
+    resultEl.innerHTML = '<div style="text-align:center;padding:10px;color:var(--red);font-size:12px">Erreur technique — réessayez</div>';
+  }
+}
+
 function filtrerRecherche(){
   const q = document.getElementById('searchInput').value.trim().toLowerCase();
   const resultsEl = document.getElementById('rechercheResults');
