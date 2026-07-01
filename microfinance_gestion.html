@@ -61,6 +61,7 @@ tr:hover td{background:#F8FAFC;}
 .st-encours{background:#DBEAFE;color:#1D4ED8;}
 .st-solde{background:#DCFCE7;color:var(--green);}
 .st-en_attente{background:#FEF9C3;color:#CA8A04;}
+.st-en_attente_sync{background:#DBEAFE;color:#1D4ED8;}
 .acc-pill{padding:2px 6px;border-radius:4px;font-size:10px;font-weight:700;}
 .acc-cc{background:#DBEAFE;color:#1D4ED8;}
 .acc-ep{background:#DCFCE7;color:var(--green);}
@@ -209,6 +210,7 @@ tr:hover td{background:#F8FAFC;}
   <div class="nav-item" onclick="nav('depots')" id="nav-depots"><span>📥</span>Dépôts / Retraits<span class="nav-badge" id="badge-depots" style="display:none">0</span></div>
   <div class="nav-item" onclick="nav('virements')"><span>↔️</span>Virements</div>
   <div class="nav-item" onclick="nav('credits')"><span>💳</span>Crédits</div>
+  <div class="nav-item" onclick="nav('cep')"><span>🎯</span>Épargne Projet</div>
   <div class="nav-sec">Administration</div>
   <div class="nav-item" onclick="nav('demandes')" id="nav-demandes"><span>✍️</span>Demandes adhésion<span class="nav-badge" id="badge-demandes" style="display:none">0</span></div>
   <div class="nav-item" onclick="nav('agences')"><span>🏢</span>Agences</div>
@@ -449,6 +451,13 @@ async function gasPost(body) {
 
 // Variante de gasPost qui retourne la réponse JSON complète du serveur
 // (nécessaire pour récupérer un ID/PIN généré côté backend)
+function uuidv4ForAdhesion(){
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random()*16|0;
+    const v = c==='x' ? r : (r&0x3|0x8);
+    return v.toString(16);
+  });
+}
 async function gasPostWithResponse(body) {
   return new Promise((resolve) => {
     try {
@@ -532,7 +541,7 @@ function compressImage(dataUrl, maxWidth, quality) {
 
 
 // ── STATE ────────────────────────────────────────────────────
-const S={membres:[],transactions:[],credits:[],agences:[],demandes:[],commerciaux:[],portefeuilles:[],creditsCollecteurs:[],currentOp:null,editId:null,pendingAction:null};
+const S={membres:[],transactions:[],credits:[],cep:[],agences:[],demandes:[],commerciaux:[],portefeuilles:[],creditsCollecteurs:[],currentOp:null,editId:null,pendingAction:null};
 
 // Version du logiciel — incrémentée à chaque correction structurelle des données
 // pour forcer une purge ponctuelle du cache local lors de la prochaine ouverture.
@@ -561,6 +570,7 @@ function lsLoad(){
   S.membres=dedupeById(JSON.parse(localStorage.getItem('nfs_membres')||'[]'), 'id');
   S.transactions=dedupeById(JSON.parse(localStorage.getItem('nfs_transactions')||'[]'), 'id');
   S.credits=dedupeById(JSON.parse(localStorage.getItem('nfs_credits')||'[]'), 'id');
+  S.cep=dedupeById(JSON.parse(localStorage.getItem('nfs_cep')||'[]'), 'id');
   S.agences=JSON.parse(localStorage.getItem('nfs_agences')||'[]');
   S.demandes=dedupeById(JSON.parse(localStorage.getItem('nfs_demandes')||'[]'), 'ref');
   S.commerciaux=dedupeById(JSON.parse(localStorage.getItem('nfs_commerciaux')||'[]'), 'id');
@@ -576,6 +586,7 @@ function lsSave(){
   localStorage.setItem('nfs_membres',JSON.stringify(S.membres));
   localStorage.setItem('nfs_transactions',JSON.stringify(S.transactions));
   localStorage.setItem('nfs_credits',JSON.stringify(S.credits));
+  localStorage.setItem('nfs_cep',JSON.stringify(S.cep));
   localStorage.setItem('nfs_agences',JSON.stringify(S.agences));
   localStorage.setItem('nfs_demandes',JSON.stringify(S.demandes));
   localStorage.setItem('nfs_commerciaux',JSON.stringify(S.commerciaux));
@@ -614,6 +625,7 @@ async function pullAll(){
   await Promise.all([
     gasPull('nfs_membres','nfs_membres'),
     gasPull('nfs_credits','nfs_credits'),
+    gasPull('nfs_cep','nfs_cep'),
     gasPull('nfs_demandes','nfs_demandes'),
     gasPull('nfs_agences','nfs_agences'),
     gasPull('nfs_commerciaux','nfs_commerciaux'),
@@ -691,7 +703,7 @@ function updateBadges(){
 
   const seenDem = new Set();
   const dem = S.demandes.filter(d=>{
-    if(d.statut!=='en_attente') return false;
+    if(d.statut!=='en_attente' && d.statut!=='en_attente_sync') return false;
     const key = d.ref || d.id;
     if(!key || seenDem.has(key)) return false;
     seenDem.add(key);
@@ -732,7 +744,7 @@ function validateAdminPin(){
 
 // ── NAVIGATION ───────────────────────────────────────────────
 const PAGE_TITLES={dashboard:'Tableau de bord',membres:'Membres',depots:'Dépôts & Retraits',
-  virements:'Virements',credits:'Crédits',demandes:"Demandes d'adhésion",agences:'Agences',commerciaux:'Commerciaux',rapports:'Rapports'};
+  virements:'Virements',credits:'Crédits',cep:'Épargne Projet',demandes:"Demandes d'adhésion",agences:'Agences',commerciaux:'Commerciaux',rapports:'Rapports'};
 let currentPage='dashboard';
 function nav(page){
   currentPage=page;
@@ -742,7 +754,7 @@ function nav(page){
   const mpt = document.getElementById('mobilePageTitle');
   if(mpt) mpt.textContent = PAGE_TITLES[page]||page;
   ({dashboard:renderDash,membres:renderMembres,depots:renderDepots,virements:renderVirements,
-    credits:renderCredits,demandes:renderDemandes,agences:renderAgences,commerciaux:renderCommerciaux,rapports:renderRapports})[page]?.();
+    credits:renderCredits,cep:renderCEP,demandes:renderDemandes,agences:renderAgences,commerciaux:renderCommerciaux,rapports:renderRapports})[page]?.();
   setTimeout(autoLabelTables, 30);
   closeMobileMenu();
 }
@@ -766,7 +778,7 @@ function renderDash(){
   const crActifs=S.credits.filter(c=>c.statut==='encours');
   const encours=crActifs.reduce((s,c)=>s+(parseFloat(c.montant)||0),0);
   const enAttente=S.transactions.filter(t=>t.statut==='attente');
-  const demandesNv=S.demandes.filter(d=>d.statut==='en_attente');
+  const demandesNv=S.demandes.filter(d=>d.statut==='en_attente'||d.statut==='en_attente_sync');
   document.getElementById('content').innerHTML=`
   <div id="soldeCinetPayBox" style="margin-bottom:16px"></div>
   <div id="volumeDepotsBox" style="margin-bottom:16px"></div>
@@ -993,6 +1005,11 @@ function approuverTx(id){
   } else if(tx.type==='RETRAIT'){
     const s=tx.compte==='CC'?(parseFloat(m.soldeCC)||0):(parseFloat(m.soldeEP)||0);
     if(parseFloat(tx.montant)>s){toast('Solde insuffisant','err');return;}
+    // Solde minimum obligatoire et non retirable sur le compte Épargne (EP)
+    if(tx.compte!=='CC' && (s-parseFloat(tx.montant)) < SOLDE_MIN_EPARGNE){
+      toast('❌ Refusé — un minimum de '+fmt(SOLDE_MIN_EPARGNE)+' doit rester sur le compte Épargne du membre','err');
+      return;
+    }
     if(tx.compte==='CC') m.soldeCC=s-parseFloat(tx.montant);
     else m.soldeEP=s-parseFloat(tx.montant);
   }
@@ -1784,7 +1801,27 @@ function calculCredit(cr){
 
   const pct = duree > 0 ? Math.min(100, Math.round((rembourse / (mensualite * duree)) * 100)) : 0;
   const enRetard = mensualitesImpayees > 0;
-  const remboursementAnticipe = capitalRestant;
+
+  // ── Prompt 4 : recalcul du montant de remboursement anticipé ──────────────
+  // Auparavant, le solde à payer pour un remboursement anticipé était simplement
+  // "mensualités restantes × mensualité" (capitalRestant), ce qui facture au client la
+  // TOTALITÉ des intérêts futurs — y compris ceux qui ne sont pas encore courus. C'est
+  // défavorable au client et ne reflète pas le taux réellement dû sur le capital restant.
+  // On recalcule ici le capital réellement dû via un tableau d'amortissement (mensualité
+  // constante, taux mensuel r) : à chaque échéance payée, une partie rembourse les intérêts
+  // du mois (solde × r) et le reste rembourse le capital. Le montant à payer pour solder par
+  // anticipation est donc le capital restant dû réellement (hors intérêts futurs non courus).
+  const r = taux / 100;
+  let soldeAmorti = M;
+  for(let i=0; i<mensualitesPayees && soldeAmorti>0; i++){
+    const interetMois = soldeAmorti * r;
+    const capitalMois = Math.max(0, mensualite - interetMois);
+    soldeAmorti = Math.max(0, soldeAmorti - capitalMois);
+  }
+  const soldeAmortiRestant = duree>0 ? Math.round(soldeAmorti) : 0;
+  // Économie d'intérêts pour le client par rapport à l'ancien calcul (mensualités restantes × mensualité)
+  const economieInteretsAnticipe = Math.max(0, Math.round(capitalRestant - soldeAmortiRestant));
+  const remboursementAnticipe = soldeAmortiRestant;
 
   // Calcul précis du nombre de jours de retard depuis la dernière échéance due mais non payée
   let joursRetard = 0;
@@ -1798,7 +1835,7 @@ function calculCredit(cr){
   return {
     montantInitial: M, taux, duree, mensualite,
     mensualitesPayees, mensualitesRestantes, mensualitesDues, mensualitesImpayees,
-    capitalRestant, montantImpaye, remboursementAnticipe,
+    capitalRestant, montantImpaye, remboursementAnticipe, economieInteretsAnticipe,
     rembourse, pct, enRetard, joursRetard, necessiteRecouvrement,
     dateDerniereEcheance, dateProchaineEcheance,
     dateDebut: dateDebut.toLocaleDateString('fr-FR')
@@ -1807,6 +1844,84 @@ function calculCredit(cr){
 
 // Seuil de jours de retard déclenchant un suivi de recouvrement actif
 const CREDIT_SEUIL_JOURS_RETARD_RECOUVREMENT = 10;
+// Solde minimum obligatoire et non retirable sur le compte Épargne (EP) de chaque membre
+const SOLDE_MIN_EPARGNE = 5000;
+
+// ── ÉPARGNE PROJET (CEP) — vue admin ────────────────────────────────
+function renderCEP(){
+  const actifs = S.cep.filter(c=>c.statut==='actif');
+  const clotures = S.cep.filter(c=>c.statut==='cloture');
+  const totalBloque = actifs.reduce((s,c)=>s+(parseFloat(c.montant)||0),0);
+  const auj = new Date();
+
+  document.getElementById('content').innerHTML = `
+  <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+    <div class="card" style="flex:1;min-width:160px"><div class="card-bd" style="text-align:center">
+      <div style="font-size:10px;color:var(--muted)">Comptes actifs</div>
+      <div style="font-size:20px;font-weight:800;color:#7C3AED">${actifs.length}</div>
+    </div></div>
+    <div class="card" style="flex:1;min-width:160px"><div class="card-bd" style="text-align:center">
+      <div style="font-size:10px;color:var(--muted)">Capital total bloqué</div>
+      <div style="font-size:20px;font-weight:800;color:var(--navy)">${fmt(totalBloque)}</div>
+    </div></div>
+    <div class="card" style="flex:1;min-width:160px"><div class="card-bd" style="text-align:center">
+      <div style="font-size:10px;color:var(--muted)">Comptes clôturés</div>
+      <div style="font-size:20px;font-weight:800;color:var(--muted)">${clotures.length}</div>
+    </div></div>
+  </div>
+
+  <div class="card"><div class="card-hd"><h3>🎯 Comptes Épargne Projet (${S.cep.length})</h3></div>
+  <div style="padding:0;overflow-x:auto">
+    <table>
+      <tr><th>ID</th><th>Membre</th><th>Montant</th><th>Durée</th><th>Taux</th><th>Ouverture</th><th>Échéance</th><th>Statut</th><th>Actions</th></tr>
+      ${S.cep.length ? S.cep.slice().reverse().map(cep=>{
+        const m = getMembre(cep.membreId);
+        const echue = cep.statut==='actif' && auj >= new Date(cep.dateEcheance);
+        const interetProjete = Math.round((parseFloat(cep.montant)||0) * ((parseFloat(cep.tauxAnnuel)||0)/100) * ((parseInt(cep.dureeMois,10)||0)/12));
+        return `<tr>
+          <td class="fw7 fs11" style="color:#7C3AED">${cep.id}</td>
+          <td>${m?m.nom+' '+m.prenom:'—'}<br><span class="fs11" style="color:var(--muted)">${cep.membreId}</span></td>
+          <td>${fmt(cep.montant)}</td>
+          <td>${cep.dureeMois} mois</td>
+          <td>${cep.tauxAnnuel}%/an</td>
+          <td class="fs11">${cep.dateOuverture||'—'}</td>
+          <td class="fs11">${cep.dateEcheance||'—'}</td>
+          <td>${cep.statut==='actif'
+            ? (echue ? '<span class="status st-actif">Échue</span>' : '<span class="status st-attente">En cours</span>')
+            : `<span class="status st-${cep.rachatAnticipe==='Oui'?'attente':'actif'}">${cep.rachatAnticipe==='Oui'?'Anticipé':'À échéance'}</span>`}
+          </td>
+          <td>${cep.statut==='actif'
+            ? `<button class="btn btn-p btn-sm" onclick="admClotureCEP('${cep.id}', ${echue?'false':'true'})">${echue?'💰 Payer':'⚠️ Clôturer'}</button>`
+            : `<span class="fs11" style="color:var(--muted)">Versé : ${fmt(cep.montantVerse||cep.montant)}</span>`}
+          </td>
+        </tr>`;
+      }).join('') : '<tr><td colspan="9" class="empty">Aucun compte Épargne Projet</td></tr>'}
+    </table>
+  </div></div>`;
+}
+
+function admClotureCEP(cepId, estAnticipe){
+  const msg = estAnticipe
+    ? "Clôture ANTICIPÉE (avant échéance) : seul le capital sera reversé au membre, les intérêts courus seront perdus. Confirmer ?"
+    : "Ce compte est arrivé à échéance : capital + intérêts vont être reversés au membre. Confirmer ?";
+  if(!confirm(msg)) return;
+  requireAdminPin('Clôturer le compte Épargne Projet '+cepId+' (PIN requis)', async ()=>{
+    const resp = await gasPostWithResponse({ action:'cloturerCEPAuto', cepId, anticipe: !!estAnticipe });
+    if(!resp || !resp.ok || !resp.cloture){ toast('❌ Échec de la clôture','err'); return; }
+    const i = S.cep.findIndex(c=>c.id===cepId);
+    if(i>=0){
+      S.cep[i].statut='cloture';
+      S.cep[i].rachatAnticipe = resp.cloture.anticipe ? 'Oui' : 'Non';
+      S.cep[i].montantInteret = resp.cloture.interet;
+      S.cep[i].montantVerse = resp.cloture.montantVerse;
+      S.cep[i].dateCloture = isoDay();
+    }
+    lsSave();
+    await gasPull('nfs_membres','nfs_membres');
+    toast('✅ Compte clôturé — '+fmt(resp.cloture.montantVerse)+' versé au membre','ok');
+    renderCEP();
+  });
+}
 
 function renderCredits(){
   const crAttente=S.credits.filter(c=>c.statut==='attente');
@@ -1919,7 +2034,7 @@ function renderCredits(){
             <div><span style="color:var(--muted);font-size:10px">Date début</span><br><b>${k.dateDebut}</b></div>
             <div><span style="color:var(--muted);font-size:10px">Dernière échéance</span><br><b>${k.dateDerniereEcheance}</b></div>
             <div><span style="color:var(--muted);font-size:10px">Prochaine échéance</span><br><b>${k.dateProchaineEcheance}</b></div>
-            <div><span style="color:var(--muted);font-size:10px">Remb. anticipé</span><br><b style="color:var(--gold)">${fmt(k.remboursementAnticipe)}</b></div>
+            <div><span style="color:var(--muted);font-size:10px">Remb. anticipé (taux recalculé)</span><br><b style="color:var(--gold)">${fmt(k.remboursementAnticipe)}</b>${k.economieInteretsAnticipe>0?`<br><span style="font-size:9px;color:var(--green)">− ${fmt(k.economieInteretsAnticipe)} d'intérêts non dus</span>`:''}</div>
           </div>
 
           ${k.enRetard?`
@@ -1939,7 +2054,8 @@ function renderCredits(){
 function soldeCreditAnticipe(id){
   const cr=S.credits.find(c=>c.id===id);if(!cr)return;
   const k=calculCredit(cr);
-  if(!confirm('Confirmer le remboursement anticipé de '+fmt(k.remboursementAnticipe)+' pour solder ce crédit ?')) return;
+  const economieMsg = k.economieInteretsAnticipe>0 ? ' (taux recalculé — '+fmt(k.economieInteretsAnticipe)+" d'intérêts non dus retirés)" : '';
+  if(!confirm('Confirmer le remboursement anticipé de '+fmt(k.remboursementAnticipe)+' pour solder ce crédit ?'+economieMsg)) return;
   requireAdminPin('Solder ce crédit par anticipation (PIN requis)',()=>{
     const m=getMembre(cr.membreId);
     if(m){
@@ -1971,7 +2087,7 @@ function simCr(){
   document.getElementById('crM').textContent=fmt(Math.round(mens));
   document.getElementById('crPreview').style.display='block';
 }
-function saveCr(){
+async function saveCr(){
   const mId=document.getElementById('cr-m').value;
   const M=parseFloat(document.getElementById('cr-mt').value);
   const n=parseInt(document.getElementById('cr-du').value);
@@ -1979,8 +2095,16 @@ function saveCr(){
   if(!mId||!M||!n||!taux) return toast('Champs requis','err');
   const r=taux/100;
   const mens=Math.round(M*r*Math.pow(1+r,n)/(Math.pow(1+r,n)-1));
-  const cr={id:'CR-'+String(S.credits.length+1).padStart(7,'0'),membreId:mId,montant:M,duree:n,taux,mensualite:mens,objet:document.getElementById('cr-ob').value,garantie:document.getElementById('cr-ga').value,statut:'attente',date:isoDay(),rembourse:0};
-  S.credits.push(cr);lsSave();gasPush('nfs_credits',cr);
+  // L'ID (CR-xxxxx) est désormais attribué de façon atomique par le backend
+  // (voir soumettreCreditAuto) plutôt que calculé depuis S.credits.length,
+  // qui pouvait entrer en collision avec un dossier soumis par un membre
+  // au même moment et écraser silencieusement l'un des deux dans le tableur.
+  const uuid = uuidv4ForAdhesion();
+  const creditData={uuid,membreId:mId,montant:M,duree:n,taux,mensualite:mens,objet:document.getElementById('cr-ob').value,garantie:document.getElementById('cr-ga').value,statut:'attente',date:isoDay(),rembourse:0};
+  const resp = await gasPostWithResponse({ action:'soumettreCreditAuto', creditData });
+  if(!resp || !resp.ok || !resp.credit || !resp.credit.id){ toast('❌ Échec de la création — vérifiez la connexion','err'); return; }
+  const cr = Object.assign({}, creditData, { id: resp.credit.id });
+  S.credits.push(cr);lsSave();
   toast('Dossier '+cr.id+' soumis','ok');closeM('mCr');renderCredits();
 }
 // Seuil au-delà duquel une double confirmation est exigée avant approbation
@@ -2096,11 +2220,11 @@ function renderDemandes(){
             ${d.photoUrl&&d.photoUrl.startsWith('http')?`<a href="${d.photoUrl}" target="_blank" class="btn btn-p btn-sm" style="text-decoration:none;font-size:10px">📸 Photo</a>`:'<span style="font-size:11px;color:var(--muted)">—</span>'}
           </div>
         </td>
-        <td><span class="st st-${d.statut}">${d.statut}</span></td>
+        <td><span class="st st-${d.statut}">${d.statut==='en_attente_sync'?'📶 en attente de connexion':d.statut}</span></td>
         <td>${d.statut==='en_attente'?`<div style="display:flex;gap:4px">
           <button class="btn btn-s btn-sm" onclick="accepterDemande('${d.ref}')">✓ Accepter</button>
           <button class="btn btn-d btn-sm" onclick="rejeterDemande('${d.ref}')">✕</button>
-        </div>`:'—'}</td>
+        </div>`:d.statut==='en_attente_sync'?'<span style="font-size:10px;color:var(--muted)">En cours de synchronisation depuis l\'appareil du membre…</span>':'—'}</td>
       </tr>`).join(''):'<tr><td colspan="8" class="empty">Aucune demande</td></tr>'}
     </table>
   </div></div>`;}
@@ -2108,13 +2232,11 @@ function renderDemandes(){
 function accepterDemande(ref){
   const d=S.demandes.find(x=>x.ref===ref);if(!d)return;
 
-  // Empêcher un doublon : même téléphone ou même email qu'un membre déjà existant
-  const telNorm = String(d.tel||'').replace(/\s+/g,'').trim();
-  const emailNorm = String(d.email||'').trim().toLowerCase();
-  const doublonTel = telNorm && S.membres.some(m=>String(m.tel||'').replace(/\s+/g,'').trim()===telNorm);
-  const doublonEmail = emailNorm && S.membres.some(m=>String(m.email||'').trim().toLowerCase()===emailNorm);
-  if(doublonTel){ toast('❌ Un membre existe déjà avec ce numéro de téléphone ('+d.tel+')','err'); return; }
-  if(doublonEmail){ toast('❌ Un membre existe déjà avec cette adresse email ('+d.email+')','err'); return; }
+  // Prompt 2 : l'unicité d'un compte repose désormais uniquement sur le numéro
+  // d'identifiant unique (ID membre, ex. MBR-0000001), attribué automatiquement à la
+  // création. Le téléphone et l'email NE sont plus des clés d'unicité : plusieurs comptes
+  // (ex. plusieurs membres d'une même famille, ou des enfants sans téléphone/email propre)
+  // peuvent désormais partager la même adresse email ou le même numéro de téléphone.
 
   requireAdminPin('Accepter la demande de '+d.nom+' '+d.prenom+' (PIN requis)',()=>{
     const id=nextId('MBR',S.membres);

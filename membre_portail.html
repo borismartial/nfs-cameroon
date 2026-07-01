@@ -43,7 +43,7 @@ body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-he
 .hero .acc-amount{font-size:17px;font-weight:800;margin-top:3px;}
 .hero .acc-id{font-size:10px;color:rgba(255,255,255,.45);margin-top:2px;}
 /* ACTIONS */
-.quick-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;padding:12px 11px;background:#fff;border-bottom:1px solid var(--border);}
+.quick-actions{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;padding:12px 11px;background:#fff;border-bottom:1px solid var(--border);}
 .qa-btn{display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;padding:7px 4px;border-radius:10px;}
 .qa-btn:active{background:#F0F4F8;}
 .qa-icon{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:19px;}
@@ -204,9 +204,54 @@ body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-he
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
             <div class="form-group"><label class="form-label">Sexe *</label><select class="form-select" id="a-sexe"><option value="">—</option><option value="M">Masculin</option><option value="F">Féminin</option></select></div>
             <div class="form-group"><label class="form-label">Date naissance *</label>
-              <input class="form-input" id="a-ddn" type="date" onclick="this.showPicker&&this.showPicker()" onchange="clearFieldError('a-ddn')">
+              <input class="form-input" id="a-ddn" type="date" onclick="this.showPicker&&this.showPicker()" onchange="clearFieldError('a-ddn');toggleMinorFields()">
               <div class="form-hint">📅 Cliquez sur la date en haut à gauche pour ouvrir le calendrier</div>
               <div class="field-err" id="err-a-ddn"></div>
+            </div>
+          </div>
+          <div id="minorParentGroup" style="display:none">
+            <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:10px;padding:11px;margin:10px 0 4px;font-size:11px;color:#92400E">
+              👶 Ce membre a moins de 21 ans. L'ouverture du compte est possible (y compris pour un bébé), mais elle doit être accompagnée de l'accord et de l'identité de son représentant légal (parent ou tuteur).
+            </div>
+            <div class="section-sub" style="margin-top:10px">Représentant légal (parent / tuteur)</div>
+            <div class="form-group"><label class="form-label">Nom et prénom du représentant légal *</label><input class="form-input" id="a-parent-nom" placeholder="Nom complet du parent / tuteur" oninput="clearFieldError('a-parent-nom')"><div class="field-err" id="err-a-parent-nom"></div></div>
+            <div class="form-group"><label class="form-label">Lien de parenté *</label>
+              <select class="form-select" id="a-parent-lien" onchange="clearFieldError('a-parent-lien')">
+                <option value="">— Sélectionner —</option>
+                <option value="Père">Père</option>
+                <option value="Mère">Mère</option>
+                <option value="Tuteur légal">Tuteur légal</option>
+                <option value="Grand-père">Grand-père</option>
+                <option value="Grand-mère">Grand-mère</option>
+                <option value="Oncle">Oncle</option>
+                <option value="Tante">Tante</option>
+                <option value="Frère">Frère</option>
+                <option value="Sœur">Sœur</option>
+                <option value="Autre">Autre</option>
+              </select>
+              <div class="field-err" id="err-a-parent-lien"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div class="form-group"><label class="form-label">N° pièce d'identité *</label><input class="form-input" id="a-parent-piece" placeholder="Ex: 123456789" oninput="clearFieldError('a-parent-piece')"><div class="field-err" id="err-a-parent-piece"></div></div>
+              <div class="form-group"><label class="form-label">Téléphone *</label><input class="form-input" id="a-parent-tel" type="tel" placeholder="+237 6XX XX XX XX" oninput="clearFieldError('a-parent-tel')"><div class="form-hint">📱 Ex : +237 677 12 34 56</div><div class="field-err" id="err-a-parent-tel"></div></div>
+            </div>
+            <div class="form-group">
+              <label style="display:flex;align-items:flex-start;gap:9px;font-size:12px;cursor:pointer;font-weight:600">
+                <input type="checkbox" id="a-parent-consent">
+                J'autorise, en tant que représentant légal, l'ouverture de ce compte au nom du mineur désigné ci-dessus et j'atteste l'exactitude des informations fournies. *
+              </label>
+              <div class="field-err" id="err-a-parent-consent"></div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Signature du représentant légal *</label>
+              <div style="border:1px dashed var(--border);border-radius:10px;background:#F8FAFC;padding:6px">
+                <canvas id="sigPadParent" width="600" height="180" style="width:100%;height:130px;display:block;touch-action:none;background:#fff;border-radius:6px;cursor:crosshair"></canvas>
+              </div>
+              <div style="display:flex;justify-content:flex-end;margin-top:5px">
+                <button type="button" onclick="clearSignaturePad('sigPadParent')" style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;font-size:11px;cursor:pointer">✕ Effacer</button>
+              </div>
+              <div class="form-hint">✍️ Le représentant légal signe ici pour confirmer son accord.</div>
+              <div class="field-err" id="err-a-parent-signature"></div>
             </div>
           </div>
           <div class="form-group"><label class="form-label">Lieu de naissance *</label><input class="form-input" id="a-lieu-naissance" placeholder="Ville de naissance" oninput="clearFieldError('a-lieu-naissance')"><div class="field-err" id="err-a-lieu-naissance"></div></div>
@@ -243,8 +288,8 @@ body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-he
 
           <div class="divider"></div>
           <div class="section-sub">Coordonnées</div>
-          <div class="form-group"><label class="form-label">Téléphone *</label><input class="form-input" id="a-tel" type="tel" placeholder="+237 6XX XX XX XX" oninput="clearFieldError('a-tel')"><div class="field-err" id="err-a-tel"></div></div>
-          <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="a-email" type="email" placeholder="exemple@email.com" oninput="clearFieldError('a-email')"><div class="field-err" id="err-a-email"></div></div>
+          <div class="form-group"><label class="form-label">Téléphone *</label><input class="form-input" id="a-tel" type="tel" placeholder="+237 6XX XX XX XX" oninput="clearFieldError('a-tel')"><div class="form-hint">📱 Format attendu — Exemple : <b>+237 677 12 34 56</b> (MTN, Orange ou Nexttel)</div><div class="field-err" id="err-a-tel"></div></div>
+          <div class="form-group"><label class="form-label">Email</label><input class="form-input" id="a-email" type="email" placeholder="ex: prenom.nom@gmail.com" oninput="clearFieldError('a-email')"><div class="field-err" id="err-a-email"></div></div>
           <div class="form-group"><label class="form-label">Quartier *</label><input class="form-input" id="a-quartier" placeholder="Ex: Akwa, Bonanjo..." oninput="clearFieldError('a-quartier')"><div class="field-err" id="err-a-quartier"></div></div>
           <div class="form-group"><label class="form-label">Ville *</label><input class="form-input" id="a-adresse" placeholder="Ex: Douala" oninput="clearFieldError('a-adresse')"><div class="field-err" id="err-a-adresse"></div></div>
         </div>
@@ -252,7 +297,31 @@ body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-he
         <!-- ═══════════ ÉTAPE 3 — PROFESSION + BÉNÉFICIAIRE ═══════════ -->
         <div id="wizStep3" class="wiz-panel" style="display:none">
           <div class="section-sub">Profession et revenus</div>
-          <div class="form-group"><label class="form-label">Profession *</label><input class="form-input" id="a-profession" placeholder="Ex: Commerçant..." oninput="clearFieldError('a-profession')"><div class="field-err" id="err-a-profession"></div></div>
+          <div class="form-group"><label class="form-label">Profession *</label>
+            <select class="form-select" id="a-profession" onchange="clearFieldError('a-profession');toggleAutreProfession()">
+              <option value="">— Sélectionner —</option>
+              <option value="Commerçant(e)">Commerçant(e)</option>
+              <option value="Agriculteur/Agricultrice">Agriculteur/Agricultrice</option>
+              <option value="Fonctionnaire">Fonctionnaire</option>
+              <option value="Employé(e) secteur privé">Employé(e) secteur privé</option>
+              <option value="Enseignant(e)">Enseignant(e)</option>
+              <option value="Artisan(e)">Artisan(e)</option>
+              <option value="Chauffeur / Transporteur">Chauffeur / Transporteur</option>
+              <option value="Profession libérale (médecin, avocat...)">Profession libérale (médecin, avocat...)</option>
+              <option value="Étudiant(e)">Étudiant(e)</option>
+              <option value="Élève">Élève</option>
+              <option value="Enfant / Sans profession">Enfant / Sans profession</option>
+              <option value="Sans emploi">Sans emploi</option>
+              <option value="Retraité(e)">Retraité(e)</option>
+              <option value="Entrepreneur/Entrepreneuse">Entrepreneur/Entrepreneuse</option>
+              <option value="Autre">Autre (préciser)</option>
+            </select>
+            <div class="field-err" id="err-a-profession"></div>
+          </div>
+          <div class="form-group" id="a-profession-autre-group" style="display:none">
+            <label class="form-label">Précisez votre profession</label>
+            <input class="form-input" id="a-profession-autre" placeholder="Votre profession">
+          </div>
           <div class="form-group"><label class="form-label">Source des revenus / fonds *</label>
             <select class="form-select" id="a-source-revenus">
               <option value="">— Sélectionner —</option>
@@ -292,7 +361,24 @@ body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-he
           <div class="section-sub">Personne à contacter en cas de décès</div>
           <div class="form-group"><label class="form-label">Nom complet</label><input class="form-input" id="a-beneficiaire-nom" placeholder="Nom et prénoms"></div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-            <div class="form-group"><label class="form-label">Lien de parenté</label><input class="form-input" id="a-beneficiaire-lien" placeholder="Ex: Époux, Fils..."></div>
+            <div class="form-group"><label class="form-label">Lien de parenté</label>
+              <select class="form-select" id="a-beneficiaire-lien">
+                <option value="">— Sélectionner —</option>
+                <option value="Époux">Époux</option>
+                <option value="Épouse">Épouse</option>
+                <option value="Fils">Fils</option>
+                <option value="Fille">Fille</option>
+                <option value="Père">Père</option>
+                <option value="Mère">Mère</option>
+                <option value="Frère">Frère</option>
+                <option value="Sœur">Sœur</option>
+                <option value="Oncle">Oncle</option>
+                <option value="Tante">Tante</option>
+                <option value="Cousin(e)">Cousin(e)</option>
+                <option value="Ami(e)">Ami(e)</option>
+                <option value="Autre">Autre</option>
+              </select>
+            </div>
             <div class="form-group"><label class="form-label">Téléphone</label><input class="form-input" id="a-beneficiaire-tel" type="tel" placeholder="+237 6XX XX XX XX"></div>
           </div>
 
@@ -394,6 +480,20 @@ body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-he
               <span>J'atteste l'exactitude des informations fournies et j'accepte que NFS CAMEROON traite mes données personnelles conformément à la réglementation COBAC, à la loi camerounaise sur la protection des données personnelles, et à la <a href="https://borismartial.github.io/nfs-cameroon/privacy_policy.html" target="_blank" style="color:var(--blue);font-weight:600;text-decoration:underline">Politique de confidentialité</a>.</span>
             </label>
           </div>
+
+          <div class="divider"></div>
+          <div class="section-sub">Signature électronique</div>
+          <div class="form-group">
+            <label class="form-label" id="sigMemberLabel">Signature du membre *</label>
+            <div style="border:1px dashed var(--border);border-radius:10px;background:#F8FAFC;padding:6px">
+              <canvas id="sigPadMember" width="600" height="180" style="width:100%;height:130px;display:block;touch-action:none;background:#fff;border-radius:6px;cursor:crosshair"></canvas>
+            </div>
+            <div style="display:flex;justify-content:flex-end;margin-top:5px">
+              <button type="button" onclick="clearSignaturePad('sigPadMember')" style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:#fff;font-size:11px;cursor:pointer">✕ Effacer</button>
+            </div>
+            <div class="form-hint">✍️ Signez avec le doigt (mobile) ou la souris dans le cadre ci-dessus.</div>
+            <div class="field-err" id="err-a-signature"></div>
+          </div>
         </div>
 
         <!-- Navigation wizard -->
@@ -433,6 +533,7 @@ body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-he
       <div class="qa-btn" onclick="goTo('retraitScreen')"><div class="qa-icon" style="background:#FEE2E2">📤</div><div class="qa-label">Retrait</div></div>
       <div class="qa-btn" onclick="goTo('virementScreen')"><div class="qa-icon" style="background:#DBEAFE">↔️</div><div class="qa-label">Virement</div></div>
       <div class="qa-btn" onclick="goTo('creditScreen')"><div class="qa-icon" style="background:#FEF3C7">💳</div><div class="qa-label">Crédit</div></div>
+      <div class="qa-btn" onclick="goTo('cepScreen')"><div class="qa-icon" style="background:#EDE9FE">🎯</div><div class="qa-label">Épargne Projet</div></div>
     </div>
     <div class="section">
       <div class="section-title">Dernières opérations <span class="see-all" onclick="goTo('histoScreen')">Tout voir</span></div>
@@ -829,10 +930,79 @@ body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-he
   </div>
 </div>
 
+<!-- ════ ÉPARGNE PROJET (CEP) ════ -->
+<div id="cepScreen" class="screen">
+  <div class="app-header"><span class="back-btn" onclick="goHome()">←</span><h2>Épargne Projet</h2><span></span></div>
+  <div class="scrollable" style="padding:14px">
+
+    <div style="background:linear-gradient(135deg,#7C3AED,#4C1D95);border-radius:14px;padding:16px;color:#fff;margin-bottom:14px">
+      <div style="font-size:14px;font-weight:800;margin-bottom:5px">🎯 Épargnez pour un projet</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.85);line-height:1.8">Bloquez un montant sur une durée fixe et bénéficiez d'un taux préférentiel. Retrait possible à tout moment, mais les intérêts ne sont acquis qu'à l'échéance.</div>
+    </div>
+
+    <div id="cepListeActifs"></div>
+
+    <button class="main-btn" style="background:#7C3AED;margin-top:6px" onclick="ouvrirFormulaireCEP()">➕ Ouvrir un compte Épargne Projet</button>
+
+    <!-- FORMULAIRE D'OUVERTURE -->
+    <div id="cepFormulaire" style="display:none;background:#fff;border-radius:14px;padding:16px;border:1px solid var(--border);margin-top:14px">
+      <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:10px">Nouveau compte Épargne Projet</div>
+
+      <div class="form-group">
+        <label class="form-label">Durée</label>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          <label onclick="selectCepDuree(3)" id="cepDureeCard-3" style="text-align:center;padding:10px 4px;border:2px solid var(--border);border-radius:10px;cursor:pointer">
+            <div style="font-size:13px;font-weight:700;color:var(--navy)">3 mois</div>
+            <div style="font-size:10px;color:var(--muted)" id="cepTauxLabel-3">4%/an</div>
+          </label>
+          <label onclick="selectCepDuree(6)" id="cepDureeCard-6" style="text-align:center;padding:10px 4px;border:2px solid var(--border);border-radius:10px;cursor:pointer">
+            <div style="font-size:13px;font-weight:700;color:var(--navy)">6 mois</div>
+            <div style="font-size:10px;color:var(--muted)" id="cepTauxLabel-6">5%/an</div>
+          </label>
+          <label onclick="selectCepDuree(12)" id="cepDureeCard-12" style="text-align:center;padding:10px 4px;border:2px solid var(--border);border-radius:10px;cursor:pointer">
+            <div style="font-size:13px;font-weight:700;color:var(--navy)">1 an</div>
+            <div style="font-size:10px;color:var(--muted)" id="cepTauxLabel-12">6%/an</div>
+          </label>
+        </div>
+      </div>
+
+      <div class="form-group"><label class="form-label">Compte à débiter</label>
+        <select class="form-select" id="cepCompteSource" onchange="majApercuCEP()">
+          <option value="EP">Compte Épargne (EP)</option>
+          <option value="CC">Compte Courant (CC)</option>
+        </select>
+        <div id="cepSoldeSource" style="font-size:11px;color:var(--muted);margin-top:4px"></div>
+      </div>
+
+      <div class="form-group"><label class="form-label">Montant à bloquer (FCFA) *</label>
+        <input class="form-input" id="cepMontant" type="number" min="1" placeholder="Ex: 100 000" oninput="majApercuCEP()">
+      </div>
+
+      <div id="cepApercu" style="display:none;background:#F5F3FF;border:1px solid #DDD6FE;border-radius:10px;padding:12px;font-size:12px;margin-bottom:10px"></div>
+
+      <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:8px;padding:9px 11px;font-size:11px;color:#92400E;margin-bottom:12px">
+        ⚠️ En cas de retrait avant l'échéance, seul le capital est restitué — les intérêts courus sont entièrement perdus.
+      </div>
+
+      <button class="main-btn" style="background:#7C3AED" onclick="soumettreCEP()">Confirmer l'ouverture</button>
+    </div>
+  </div>
+  <div class="bottom-nav">
+    <div class="nav-tab" onclick="goHome()"><div class="nav-icon">🏠</div><div class="nav-label">Accueil</div></div>
+    <div class="nav-tab" onclick="goTo('histoScreen')"><div class="nav-icon">📋</div><div class="nav-label">Historique</div></div>
+    <div class="nav-tab" onclick="goTo('creditScreen')"><div class="nav-icon">💳</div><div class="nav-label">Crédit</div></div>
+    <div class="nav-tab" onclick="goTo('profilScreen')"><div class="nav-icon">👤</div><div class="nav-label">Profil</div></div>
+    <div class="nav-tab" onclick="actualiserCompte()"><div class="nav-icon" id="refreshIcon">🔄</div><div class="nav-label">Actualiser</div></div>
+  </div>
+</div>
+
 <!-- ════ HISTORIQUE ════ -->
 <div id="histoScreen" class="screen">
   <div class="app-header"><span class="back-btn" onclick="goHome()">←</span><h2>Historique complet</h2><span></span></div>
-  <div class="scrollable" style="padding:13px"><div id="histoList"></div></div>
+  <div class="scrollable" style="padding:13px">
+    <button class="main-btn navy" style="margin-bottom:12px" onclick="imprimerReleveCompte()">🖨️ Imprimer mon relevé de compte (3 derniers mois)</button>
+    <div id="histoList"></div>
+  </div>
   <div class="bottom-nav">
     <div class="nav-tab" onclick="goHome()"><div class="nav-icon">🏠</div><div class="nav-label">Accueil</div></div>
     <div class="nav-tab active"><div class="nav-icon">📋</div><div class="nav-label">Historique</div></div>
@@ -955,6 +1125,8 @@ body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-he
 <script>
 // ── GAS SYNC ──────────────────────────────────────────────────
 // ── GOOGLE APPS SCRIPT SYNC ───────────────────────────────────
+// Solde minimum obligatoire et non retirable sur le compte Épargne (EP), toutes voies de retrait confondues.
+const SOLDE_MIN_EPARGNE = 5000;
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyIzgPsZuL_C9lvpz2jlfwHyfabhjMk8bWcWnAyrAupofc1cwks3hTPSHmYFUBXQ98/exec";
 
 // GET via JSONP (contourne CORS)
@@ -1169,6 +1341,9 @@ function lsSet(k,v){localStorage.setItem(k,JSON.stringify(v));}
 function getMembres(){return lsGet('nfs_membres');}
 function getTx(){return lsGet('nfs_transactions');}
 function getCredits(){return lsGet('nfs_credits');}
+function getCEP(){return lsGet('nfs_cep');}
+// Taux annuel préférentiel par durée (mois) pour les comptes Épargne Projet (CEP)
+const CEP_TAUX = { 3: 4, 6: 5, 12: 6 };
 
 async function loadAgences(){
   // Charger depuis localStorage d'abord
@@ -1234,6 +1409,7 @@ function goTo(screen){
   if(screen==='profilScreen') renderProfil();
   if(screen==='creditScreen') renderCreditScreen();
   if(screen==='virementScreen') afficherQuotaVirement();
+  if(screen==='cepScreen') renderCEPScreen();
   showScreen(screen);
 }
 
@@ -1684,6 +1860,13 @@ async function demanderOp(type){
       toast('❌ Solde insuffisant — disponible : '+fmt(soldeDisponible),'err');
       return;
     }
+    // Solde minimum obligatoire sur le compte Épargne (EP) : ce montant n'est jamais
+    // retirable, il reste bloqué en garantie sur le compte.
+    if(compte==='EP' && (soldeDisponible - montant) < SOLDE_MIN_EPARGNE){
+      const maxRetirable = Math.max(0, soldeDisponible - SOLDE_MIN_EPARGNE);
+      toast('❌ Un minimum de '+fmt(SOLDE_MIN_EPARGNE)+' doit rester sur le compte Épargne — retrait maximum possible : '+fmt(maxRetirable),'err');
+      return;
+    }
   }
 
   // Vérifier la preuve de versement AVANT d'ouvrir la modal PIN (dépôt uniquement)
@@ -2060,6 +2243,185 @@ function calculCredit(cr){
   };
 }
 
+// ── ÉPARGNE PROJET (CEP) — comptes à terme 3 / 6 / 12 mois ─────────
+let cepDureeSelectionnee = null;
+
+function renderCEPScreen(){
+  const mesCEP = getCEP().filter(x=>x.membreId===ME.id).slice().reverse();
+  const el = document.getElementById('cepListeActifs');
+  if(!mesCEP.length){
+    el.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:12px">Aucun compte Épargne Projet pour le moment.</div>';
+    return;
+  }
+  const auj = new Date();
+  el.innerHTML = mesCEP.map(cep=>{
+    const echeance = new Date(cep.dateEcheance);
+    const ouverture = new Date(cep.dateOuverture);
+    const dureeTotaleJ = Math.max(1,(echeance-ouverture)/86400000);
+    const ecouleJ = Math.min(dureeTotaleJ, Math.max(0,(auj-ouverture)/86400000));
+    const pct = Math.round((ecouleJ/dureeTotaleJ)*100);
+    const estActif = cep.statut==='actif';
+    const estEchu = estActif && auj>=echeance;
+    const interetProjete = Math.round((parseFloat(cep.montant)||0) * ((parseFloat(cep.tauxAnnuel)||0)/100) * ((parseInt(cep.dureeMois,10)||0)/12));
+    return `<div class="credit-card" style="margin-bottom:12px;border:1px solid ${estEchu?'#86EFAC':'var(--border)'}">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+        <div>
+          <div style="font-size:10px;color:#7C3AED;font-weight:700">${cep.id}</div>
+          <div style="font-size:16px;font-weight:800">${fmt(cep.montant)}</div>
+          <div style="font-size:10px;color:var(--muted)">${cep.dureeMois} mois · ${cep.tauxAnnuel}%/an · compte ${cep.compteSource}</div>
+        </div>
+        <div style="text-align:right">
+          ${!estActif
+            ? `<span class="status st-${cep.rachatAnticipe==='Oui'?'attente':'actif'}">${cep.rachatAnticipe==='Oui'?'Clôturé (anticipé)':'Clôturé à échéance'}</span>`
+            : estEchu ? `<span class="status st-actif">Échéance atteinte</span>` : `<span class="status st-attente">En cours</span>`}
+        </div>
+      </div>
+      ${estActif ? `
+      <div class="progress-bar" style="height:8px"><div class="progress-fill" style="width:${pct}%;background:#7C3AED"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;margin-top:5px;margin-bottom:8px;color:var(--muted)">
+        <span>Ouvert le ${ouverture.toLocaleDateString('fr-FR')}</span>
+        <span>Échéance ${echeance.toLocaleDateString('fr-FR')}</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Intérêt projeté à l'échéance : <b style="color:#7C3AED">${fmt(interetProjete)}</b></div>
+      <button class="btn btn-o" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--border);background:#fff;font-size:12px;cursor:pointer" onclick="demanderClotureCEP('${cep.id}', ${estEchu?'false':'true'})">
+        ${estEchu ? '💰 Retirer capital + intérêts' : '⚠️ Retirer maintenant (perte des intérêts)'}
+      </button>` : `
+      <div style="font-size:11px;color:var(--muted);margin-top:6px">
+        Clôturé le ${cep.dateCloture||'—'} · Montant versé : <b>${fmt(cep.montantVerse||cep.montant)}</b>
+        ${cep.rachatAnticipe==='Oui' ? ' (retrait anticipé — intérêts non versés)' : ' (intérêts inclus : '+fmt(cep.montantInteret||0)+')'}
+      </div>`}
+    </div>`;
+  }).join('');
+}
+
+function ouvrirFormulaireCEP(){
+  document.getElementById('cepFormulaire').style.display = 'block';
+  Object.keys(CEP_TAUX).forEach(d=>{
+    const el = document.getElementById('cepTauxLabel-'+d);
+    if(el) el.textContent = CEP_TAUX[d]+'%/an';
+  });
+  selectCepDuree(3);
+  majApercuCEP();
+  document.getElementById('cepFormulaire').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function selectCepDuree(duree){
+  cepDureeSelectionnee = duree;
+  [3,6,12].forEach(d=>{
+    const card = document.getElementById('cepDureeCard-'+d);
+    if(card) card.style.borderColor = (d===duree) ? '#7C3AED' : 'var(--border)';
+    if(card) card.style.background = (d===duree) ? '#F5F3FF' : '#fff';
+  });
+  majApercuCEP();
+}
+
+function majApercuCEP(){
+  const compte = document.getElementById('cepCompteSource')?.value || 'EP';
+  const solde = compte==='CC' ? (parseFloat(ME.soldeCC)||0) : (parseFloat(ME.soldeEP)||0);
+  const soldeEl = document.getElementById('cepSoldeSource');
+  if(soldeEl){
+    if(compte==='EP'){
+      const maxDispo = Math.max(0, solde - SOLDE_MIN_EPARGNE);
+      soldeEl.textContent = 'Solde disponible : '+fmt(solde)+' · Montant maximum utilisable : '+fmt(maxDispo)+' (minimum '+fmt(SOLDE_MIN_EPARGNE)+' non retirable)';
+    } else {
+      soldeEl.textContent = 'Solde disponible : '+fmt(solde);
+    }
+  }
+
+  const montant = parseFloat(document.getElementById('cepMontant')?.value) || 0;
+  const apercuEl = document.getElementById('cepApercu');
+  if(!montant || !cepDureeSelectionnee){ apercuEl.style.display='none'; return; }
+
+  const taux = CEP_TAUX[cepDureeSelectionnee];
+  const interet = Math.round(montant * (taux/100) * (cepDureeSelectionnee/12));
+  const dateEcheance = new Date();
+  dateEcheance.setMonth(dateEcheance.getMonth() + cepDureeSelectionnee);
+
+  apercuEl.style.display = 'block';
+  apercuEl.innerHTML = `
+    <div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:var(--muted)">Capital bloqué</span><span class="fw7">${fmt(montant)}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:var(--muted)">Intérêt à l'échéance (${taux}%/an)</span><span class="fw7" style="color:#7C3AED">+${fmt(interet)}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:2px 0;border-top:1px solid #DDD6FE;margin-top:4px;padding-top:6px"><span style="color:var(--muted)">Total à l'échéance</span><span class="fw7">${fmt(montant+interet)}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:2px 0"><span style="color:var(--muted)">Date d'échéance</span><span class="fw7">${dateEcheance.toLocaleDateString('fr-FR')}</span></div>
+  `;
+}
+document.addEventListener('input', (e)=>{ if(e.target.id==='cepMontant') majApercuCEP(); });
+
+async function soumettreCEP(){
+  if(!cepDureeSelectionnee) return toast('Choisissez une durée','err');
+  const compte = document.getElementById('cepCompteSource').value;
+  const montant = parseFloat(document.getElementById('cepMontant').value);
+  if(!montant || montant<=0) return toast('Montant invalide','err');
+
+  const solde = compte==='CC' ? (parseFloat(ME.soldeCC)||0) : (parseFloat(ME.soldeEP)||0);
+  if(montant > solde) return toast('❌ Solde insuffisant — disponible : '+fmt(solde),'err');
+  if(compte==='EP' && (solde - montant) < SOLDE_MIN_EPARGNE){
+    const maxDispo = Math.max(0, solde - SOLDE_MIN_EPARGNE);
+    return toast('❌ Un minimum de '+fmt(SOLDE_MIN_EPARGNE)+' doit rester sur le compte Épargne — maximum utilisable : '+fmt(maxDispo),'err');
+  }
+
+  openPinModal('🔐 Confirmer l\'ouverture', 'Entrez votre PIN pour bloquer '+fmt(montant)+' sur '+cepDureeSelectionnee+' mois', async () => {
+    const uuid = uuidv4ForAdhesion();
+    const cepData = {
+      uuid, membreId: ME.id, montant, dureeMois: cepDureeSelectionnee,
+      tauxAnnuel: CEP_TAUX[cepDureeSelectionnee], compteSource: compte,
+      dateOuverture: isoDay()
+    };
+    toast('Ouverture du compte en cours...');
+    const resp = await gasPostWithResponse({ action:'ouvrirCEPAuto', cepData });
+    if(!resp || !resp.ok || !resp.cep || !resp.cep.id){
+      toast('❌ Échec — vérifiez votre connexion et réessayez','err');
+      return;
+    }
+    const cep = Object.assign({}, cepData, { id: resp.cep.id, dateEcheance: resp.cep.dateEcheance, statut:'actif', rachatAnticipe:'Non' });
+    const liste = getCEP();
+    liste.push(cep);
+    lsSet('nfs_cep', liste);
+
+    // Rafraîchir le solde local (déjà débité côté serveur)
+    await gasPull('nfs_membres','nfs_membres');
+    const fresh = getMembres().find(m=>m.id===ME.id);
+    if(fresh) ME = fresh;
+
+    document.getElementById('cepFormulaire').style.display = 'none';
+    document.getElementById('cepMontant').value = '';
+    showSuccess('🎯','Compte Épargne Projet ouvert !',
+      'Votre capital de '+fmt(montant)+' est bloqué jusqu\'au '+new Date(resp.cep.dateEcheance).toLocaleDateString('fr-FR')+'.',
+      'Compte : '+resp.cep.id);
+    renderCEPScreen();
+  });
+}
+
+function demanderClotureCEP(cepId, estAnticipe){
+  const msg = estAnticipe
+    ? "Vous retirez avant l'échéance : seul le capital vous sera restitué, tous les intérêts courus seront perdus. Confirmer ?"
+    : "Votre épargne projet est arrivée à échéance : le capital et les intérêts vont être versés sur le compte source. Confirmer ?";
+  if(!confirm(msg)) return;
+  openPinModal('🔐 Confirmer le retrait', 'Entrez votre PIN pour clôturer ce compte Épargne Projet', async () => {
+    toast('Traitement en cours...');
+    const resp = await gasPostWithResponse({ action:'cloturerCEPAuto', cepId, anticipe: !!estAnticipe });
+    if(!resp || !resp.ok || !resp.cloture){
+      toast('❌ Échec — réessayez','err');
+      return;
+    }
+    const liste = getCEP();
+    const i = liste.findIndex(c=>c.id===cepId);
+    if(i>=0){
+      liste[i].statut='cloture';
+      liste[i].rachatAnticipe = resp.cloture.anticipe ? 'Oui' : 'Non';
+      liste[i].montantInteret = resp.cloture.interet;
+      liste[i].montantVerse = resp.cloture.montantVerse;
+      liste[i].dateCloture = isoDay();
+      lsSet('nfs_cep', liste);
+    }
+    await gasPull('nfs_membres','nfs_membres');
+    const fresh = getMembres().find(m=>m.id===ME.id);
+    if(fresh) ME = fresh;
+    toast('✅ Compte clôturé — '+fmt(resp.cloture.montantVerse)+' versé','ok');
+    renderCEPScreen();
+  });
+}
+
 function renderCreditScreen(){
   const credits=getCredits().filter(c=>c.membreId===ME.id);
   const enCours=credits.filter(c=>c.statut==='encours');
@@ -2323,15 +2685,17 @@ function demandeCredit(){
   const garantieInputId = hasCam ? 'crGarantieCamera' : (hasPV ? 'crGarantiePhotoVideo' : (hasDoc ? 'crGarantieDoc' : null));
   const capturedGarantieFile = hasCam || hasPV || hasDoc || null;
 
-  openPinModal('🔐 Confirmer la demande', 'Entrez votre PIN personnel pour soumettre ce dossier de crédit', () => {
+  openPinModal('🔐 Confirmer la demande', 'Entrez votre PIN personnel pour soumettre ce dossier de crédit', async () => {
    try {
     // UUID de déduplication — cohérent avec le pattern offline-first du reste de l'app
     const uuid = uuidv4ForAdhesion();
 
-    // Créer et sauvegarder le dossier IMMÉDIATEMENT (sans attendre l'upload)
-    const credits = getCredits();
-    const cr = {
-      id: 'CR-'+String(credits.length+1).padStart(7,'0'),
+    // Données du dossier — SANS id local : l'ID définitif (CR-xxxxx) est
+    // désormais généré de façon atomique par le backend (voir soumettreCreditAuto),
+    // pour ne plus jamais entrer en collision avec un dossier soumis par un
+    // autre membre au même moment (bug corrigé — les demandes n'arrivaient
+    // pas toujours côté admin car deux dossiers pouvaient écraser le même ID).
+    const creditData = {
       uuid,
       membreId: ME.id,
       montant: M,
@@ -2342,28 +2706,69 @@ function demandeCredit(){
       typeGarantie,
       garantId: typeGarantie==='Caution solidaire' ? garantSolidaireMembre.id : '',
       garantie: garantieTxt,
-      garantieUrl: '',
-      statut: 'attente',
-      date: isoDay(),
-      rembourse: 0
+      garantieUrl: ''
       // taux et mensualite seront définis par l'administrateur à l'approbation
     };
-    credits.push(cr);
-    lsSet('nfs_credits', credits);
-    gasPush('nfs_credits', cr);
 
-    // Email de confirmation avec récapitulatif complet (Prompt 6)
-    if(ME.email){
-      gasPost({
-        action: 'sendNotificationEmail',
-        email: ME.email, nom: ME.nom, prenom: ME.prenom,
-        type: 'CREDIT',
-        details: {
-          montant: fmtN(M), duree: n, objet: objet,
-          revenu: fmtN(revenu), garantie: typeGarantie
-        },
-        ref: cr.id
-      });
+    let creditId = null;
+
+    if(navigator.onLine){
+      const resp = await gasPostWithResponse({ action: 'soumettreCreditAuto', creditData });
+      if(resp && resp.ok && resp.credit && resp.credit.id){
+        creditId = resp.credit.id;
+      }
+    }
+
+    if(creditId){
+      // Succès immédiat — enregistrer localement avec l'ID définitif attribué par le serveur
+      const cr = Object.assign({}, creditData, { id: creditId, statut:'attente', date: isoDay(), rembourse: 0 });
+      const credits = getCredits();
+      credits.push(cr);
+      lsSet('nfs_credits', credits);
+
+      if(ME.email){
+        gasPost({
+          action: 'sendNotificationEmail',
+          email: ME.email, nom: ME.nom, prenom: ME.prenom,
+          type: 'CREDIT',
+          details: { montant: fmtN(M), duree: n, objet: objet, revenu: fmtN(revenu), garantie: typeGarantie },
+          ref: cr.id
+        });
+      }
+
+      showSuccess('📩','Demande envoyée !',
+        "Votre dossier de crédit pour "+fmt(M)+" est en attente d'étude. Le taux et les modalités vous seront communiqués après validation.",
+        'Dossier : '+cr.id);
+
+      if(capturedGarantieFile){
+        setTimeout(async () => {
+          try{
+            const ts = Date.now();
+            const subfolder = 'Garanties crédit';
+            const prefix = garantieInputId==='crGarantiePhotoVideo' ? 'GARANTIE_' : 'GARANTIE_DOC_';
+            const garantieUrl = await gasUploadFileObj(capturedGarantieFile, prefix+ME.id+'_'+ts, subfolder);
+            if(garantieUrl){
+              const allCr = getCredits();
+              const i = allCr.findIndex(c=>c.id===cr.id);
+              if(i>=0){
+                allCr[i].garantieUrl = garantieUrl;
+                lsSet('nfs_credits', allCr);
+                gasPush('nfs_credits', allCr[i]);
+              }
+            }
+          }catch(e){ console.error('Upload garantie échoué:', e); }
+        }, 300);
+      }
+    } else {
+      // Hors-ligne ou échec réseau — mettre en file d'attente locale et réessayer
+      // automatiquement (même mécanisme robuste que les demandes d'adhésion :
+      // retry au retour en ligne, au retour au premier plan, et périodiquement).
+      const queue = JSON.parse(localStorage.getItem('nfs_credits_attente')||'[]');
+      queue.push(creditData);
+      localStorage.setItem('nfs_credits_attente', JSON.stringify(queue));
+      showSuccess('📶','Demande mise en attente',
+        "Une difficulté de connexion a été rencontrée. Votre dossier est sauvegardé et sera transmis automatiquement dès le retour de la connexion.",
+        'Référence locale : '+uuid.slice(0,8).toUpperCase());
     }
 
     document.getElementById('crMontant').value='';
@@ -2374,37 +2779,42 @@ function demandeCredit(){
     document.getElementById('crTypeGarantie').value='';
     try{ clearRecu('crGarantiePhotoVideo','crGarantiePreview',null); }catch(e){}
 
-    showSuccess('📩','Demande envoyée !',
-      "Votre dossier de crédit pour "+fmt(M)+" est en attente d'étude. Le taux et les modalités vous seront communiqués après validation.",
-      'Dossier : '+cr.id);
-
-    // Upload de la garantie EN ARRIÈRE-PLAN (non-bloquant) — utilise le fichier capturé en mémoire
-    if(capturedGarantieFile){
-      setTimeout(async () => {
-        try{
-          const ts = Date.now();
-          const subfolder = 'Garanties crédit';
-          const prefix = garantieInputId==='crGarantiePhotoVideo' ? 'GARANTIE_' : 'GARANTIE_DOC_';
-          const garantieUrl = await gasUploadFileObj(capturedGarantieFile, prefix+ME.id+'_'+ts, subfolder);
-          if(garantieUrl){
-            const allCr = getCredits();
-            const i = allCr.findIndex(c=>c.id===cr.id);
-            if(i>=0){
-              allCr[i].garantieUrl = garantieUrl;
-              lsSet('nfs_credits', allCr);
-              gasPush('nfs_credits', allCr[i]);
-            }
-          }
-        }catch(e){ console.error('Upload garantie échoué:', e); }
-      }, 300);
-    }
-
    } catch(err){
      console.error('Erreur demandeCredit:', err);
      toast('Une erreur est survenue, réessayez','err');
    }
   });
 }
+
+// ── SYNCHRONISATION DES DEMANDES DE CRÉDIT EN ATTENTE ────────────────
+let _syncCreditsEnCours = false;
+async function synchroniserCreditsEnAttente(){
+  if(!navigator.onLine) return;
+  if(_syncCreditsEnCours) return;
+  const queue = JSON.parse(localStorage.getItem('nfs_credits_attente')||'[]');
+  if(!queue.length) return;
+  _syncCreditsEnCours = true;
+  try{
+    const restantes = [];
+    for(const creditData of queue){
+      const resp = await gasPostWithResponse({ action: 'soumettreCreditAuto', creditData });
+      if(resp && resp.ok && resp.credit && resp.credit.id){
+        const cr = Object.assign({}, creditData, { id: resp.credit.id, statut:'attente', date: isoDay(), rembourse: 0 });
+        const credits = getCredits();
+        if(!credits.some(c=>c.uuid===creditData.uuid)){ credits.push(cr); lsSet('nfs_credits', credits); }
+        toast('✅ Dossier de crédit synchronisé — '+resp.credit.id,'ok');
+      } else {
+        restantes.push(creditData);
+      }
+    }
+    localStorage.setItem('nfs_credits_attente', JSON.stringify(restantes));
+  } finally {
+    _syncCreditsEnCours = false;
+  }
+}
+window.addEventListener('online', synchroniserCreditsEnAttente);
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') synchroniserCreditsEnAttente(); });
+setInterval(synchroniserCreditsEnAttente, 20000);
 
 // ── HISTORIQUE ───────────────────────────────────────────────
 function renderHisto(){
@@ -2429,6 +2839,86 @@ function renderHisto(){
         </div>
       </div>`;}).join('')+'</div>'
     :'<div style="text-align:center;padding:40px;color:var(--muted)">Aucune transaction</div>';
+}
+
+// ── RELEVÉ DE COMPTE IMPRIMABLE — Prompt 8 ──────────────────────
+// Génère et ouvre un relevé de compte imprimable couvrant les 3 derniers mois glissants,
+// dans le même esprit que le bulletin d'adhésion (fenêtre dédiée, mise en page A4, impression
+// automatique). Regroupe les opérations Épargne (EP) et Compte courant (CC) par ordre chronologique.
+function imprimerReleveCompte(){
+  if(!ME) return;
+  const auj = new Date();
+  const dateDebut = new Date(auj); dateDebut.setMonth(dateDebut.getMonth()-3);
+  const txs = getTx()
+    .filter(t=>t.membreId===ME.id)
+    .filter(t=>{ const d = new Date(t.dateIso || t.date); return !isNaN(d) ? d>=dateDebut : true; })
+    .slice()
+    .sort((a,b)=> new Date(a.dateIso||a.date) - new Date(b.dateIso||b.date));
+
+  const w = window.open('', '_blank');
+  if(!w){ toast('Autorisez les pop-ups pour voir le relevé','err'); return; }
+
+  let soldeEPCourant = 0, soldeCCCourant = 0;
+  const lignes = txs.map(t=>{
+    const montant = parseFloat(t.montant)||0;
+    const credit = (t.type==='DEPOT'||t.type==='VIREMENT_IN');
+    if((t.compte||'').toUpperCase()==='EP') soldeEPCourant += credit ? montant : -montant;
+    else soldeCCCourant += credit ? montant : -montant;
+    return `<tr>
+      <td>${t.dateAff||t.date||'—'}</td>
+      <td>${t.motif||t.type||'—'}</td>
+      <td>${t.compte||'—'}</td>
+      <td style="text-align:right;color:${credit?'#166534':'#B91C1C'}">${credit?'+':'-'}${fmtN(montant)}</td>
+      <td>${t.statut||'—'}</td>
+    </tr>`;
+  }).join('');
+
+  w.document.write(`
+    <!DOCTYPE html><html><head><meta charset="UTF-8"><title>Relevé de compte — ${ME.id}</title>
+    <style>
+      body{font-family:'Georgia',serif;max-width:760px;margin:30px auto;color:#1E293B;padding:0 20px}
+      .header{text-align:center;border-bottom:3px solid #D4A017;padding-bottom:16px;margin-bottom:20px}
+      .header h1{color:#0D2B6E;font-size:22px;margin-bottom:4px}
+      .header .slogan{color:#46519E;font-style:italic;font-size:13px}
+      .ref-box{background:#F0F9FF;border:1px solid #BFDBFE;border-radius:8px;padding:10px 14px;text-align:center;margin-bottom:20px}
+      .ref-box .num{font-size:18px;font-weight:800;color:#0D2B6E}
+      h2{font-size:14px;color:#0D2B6E;border-bottom:1px solid #E2E8F0;padding-bottom:5px;margin-top:18px}
+      table{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+      th{background:#F8FAFC;text-align:left;padding:6px;border-bottom:2px solid #E2E8F0;font-size:11px;color:#64748B}
+      td{padding:6px;border-bottom:1px solid #F1F5F9}
+      .soldes{display:flex;justify-content:space-around;margin-top:16px;text-align:center}
+      .solde-box{background:#F8FAFC;border-radius:8px;padding:10px 18px}
+      .solde-box .lbl{font-size:10px;color:#64748B}
+      .solde-box .val{font-size:16px;font-weight:800;color:#0D2B6E;margin-top:2px}
+      .footer{margin-top:30px;text-align:center;font-size:10px;color:#94A3B8}
+      @media print{ body{margin:0} }
+    </style></head><body>
+      <div class="header">
+        <h1>NFS CAMEROON — Coopérative d'Épargne et de Crédit</h1>
+        <div class="slogan">Votre réussite, notre engagement collectif</div>
+      </div>
+      <div class="ref-box">
+        <div style="font-size:11px;color:#64748B">RELEVÉ DE COMPTE — 3 DERNIERS MOIS</div>
+        <div class="num">${ME.nom} ${ME.prenom} — ${ME.id}</div>
+        <div style="font-size:11px;color:#64748B">Période du ${dateDebut.toLocaleDateString('fr-FR')} au ${auj.toLocaleDateString('fr-FR')} · Édité le ${todayFr()}</div>
+      </div>
+
+      <h2>Opérations</h2>
+      <table>
+        <tr><th>Date</th><th>Libellé</th><th>Compte</th><th style="text-align:right">Montant</th><th>Statut</th></tr>
+        ${lignes || '<tr><td colspan="5" style="text-align:center;color:#94A3B8;padding:14px">Aucune opération sur cette période</td></tr>'}
+      </table>
+
+      <div class="soldes">
+        <div class="solde-box"><div class="lbl">Solde Épargne (EP)</div><div class="val">${fmt(ME.soldeEP||0)}</div></div>
+        <div class="solde-box"><div class="lbl">Solde Compte courant (CC)</div><div class="val">${fmt(ME.soldeCC||0)}</div></div>
+      </div>
+
+      <div class="footer">Document généré automatiquement — NFS CAMEROON — Douala, Cameroun. Ce relevé fait foi des opérations enregistrées sur votre compte.</div>
+      <script>window.onload=()=>window.print();</scr` + `ipt>
+    </body></html>
+  `);
+  w.document.close();
 }
 
 // ── PROFIL ───────────────────────────────────────────────────
@@ -2483,7 +2973,7 @@ function wizUpdateUI(){
   document.getElementById('wizBtnPrev').style.display = wizCurrentStep>1 ? 'block' : 'none';
   document.getElementById('wizBtnNext').textContent = wizCurrentStep<4 ? 'Suivant →' : '✅ Créer mon compte';
   document.getElementById('wizBtnNext').onclick = wizCurrentStep<4 ? wizNext : submitAdhesion;
-  if(wizCurrentStep===4){ buildRecap(); majPartSocialeAffichage(); }
+  if(wizCurrentStep===4){ buildRecap(); majPartSocialeAffichage(); setTimeout(()=>initSignaturePad('sigPadMember'),30); if(estMineur()) setTimeout(()=>initSignaturePad('sigPadParent'),30); }
   sauvegarderBrouillonWizard();
 }
 
@@ -2521,6 +3011,80 @@ function togglePPE(){
   document.getElementById('ppeDetailGroup').style.display = document.getElementById('a-ppe').checked ? 'block' : 'none';
 }
 
+// ── GESTION DES COMPTES MINEURS (< 21 ans) — Prompt 1 ──────────
+// Affiche/masque le bloc représentant légal selon l'âge du membre.
+// Les bébés et enfants peuvent ouvrir un compte : aucune limite d'âge minimum,
+// mais en dessous de 21 ans, l'accord + identité + signature du parent/tuteur sont exigés.
+function toggleMinorFields(){
+  const ddnVal = document.getElementById('a-ddn')?.value;
+  const age = ddnVal ? calculerAge(ddnVal) : null;
+  const group = document.getElementById('minorParentGroup');
+  const isMinor = age !== null && age < 21;
+  if(group) group.style.display = isMinor ? 'block' : 'none';
+  const sigLabel = document.getElementById('sigMemberLabel');
+  if(sigLabel) sigLabel.textContent = isMinor ? 'Signature du membre (ou du représentant légal si trop jeune pour signer) *' : 'Signature du membre *';
+  if(isMinor) setTimeout(()=>initSignaturePad('sigPadParent'), 30);
+}
+
+function estMineur(){
+  const ddnVal = document.getElementById('a-ddn')?.value;
+  if(!ddnVal) return false;
+  return calculerAge(ddnVal) < 21;
+}
+
+// ── MENU "AUTRE" POUR LA PROFESSION — Prompt 6 ──────────────────
+function toggleAutreProfession(){
+  const val = document.getElementById('a-profession')?.value;
+  const grp = document.getElementById('a-profession-autre-group');
+  if(grp) grp.style.display = (val === 'Autre') ? 'block' : 'none';
+}
+
+// ── SIGNATURE ÉLECTRONIQUE (canvas) — Prompt 9 ──────────────────
+// Pads simples : dessin au doigt/souris, export en dataURL PNG.
+const _sigPads = {};
+function initSignaturePad(canvasId){
+  const canvas = document.getElementById(canvasId);
+  if(!canvas || _sigPads[canvasId]) return; // déjà initialisé
+  const ctx = canvas.getContext('2d');
+  ctx.lineWidth = 2.2;
+  ctx.lineCap = 'round';
+  ctx.strokeStyle = '#0D2B6E';
+  let drawing = false, hasDrawn = false;
+
+  function getPos(e){
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const point = e.touches ? e.touches[0] : e;
+    return { x: (point.clientX - rect.left) * scaleX, y: (point.clientY - rect.top) * scaleY };
+  }
+  function start(e){ drawing = true; hasDrawn = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault(); }
+  function move(e){ if(!drawing) return; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); }
+  function end(){ drawing = false; }
+
+  canvas.addEventListener('mousedown', start);
+  canvas.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', end);
+  canvas.addEventListener('touchstart', start, {passive:false});
+  canvas.addEventListener('touchmove', move, {passive:false});
+  canvas.addEventListener('touchend', end);
+
+  _sigPads[canvasId] = { canvas, ctx, isEmpty: () => !hasDrawn, reset: () => { hasDrawn=false; ctx.clearRect(0,0,canvas.width,canvas.height); } };
+}
+function clearSignaturePad(canvasId){
+  const pad = _sigPads[canvasId];
+  if(pad) pad.reset();
+}
+function signaturePadIsEmpty(canvasId){
+  const pad = _sigPads[canvasId];
+  return !pad || pad.isEmpty();
+}
+function signaturePadDataUrl(canvasId){
+  const pad = _sigPads[canvasId];
+  if(!pad || pad.isEmpty()) return '';
+  return pad.canvas.toDataURL('image/png');
+}
+
 // Calcule et affiche le montant de la part sociale selon le type de membre choisi
 const PART_SOCIALE_MONTANTS = { physique: 5000, etudiant: 1000, morale: 10000 };
 function getPartSocialeMontant(){
@@ -2542,12 +3106,13 @@ function sauvegarderBrouillonWizard(){
     const fields = ['a-nom','a-prenom','a-sexe','a-ddn','a-lieu-naissance','a-nationalite','a-situation-matri',
       'a-type-piece','a-cni','a-date-emission','a-date-expiration','a-autorite-emission',
       'a-tel','a-email','a-quartier','a-adresse',
-      'a-profession','a-source-revenus','a-agence','a-parrain','a-tranche',
+      'a-profession','a-profession-autre','a-source-revenus','a-agence','a-parrain','a-tranche',
       'a-beneficiaire-nom','a-beneficiaire-lien','a-beneficiaire-tel',
-      'a-ppe-detail','a-origine-fonds'];
+      'a-ppe-detail','a-origine-fonds',
+      'a-parent-nom','a-parent-lien','a-parent-piece','a-parent-tel'];
     const data = {};
     fields.forEach(id=>{ const el=document.getElementById(id); if(el) data[id]=el.value; });
-    ['a-ep','a-cc','a-credit','a-ppe','a-part-sociale-engagement','a-consent'].forEach(id=>{
+    ['a-ep','a-cc','a-credit','a-ppe','a-part-sociale-engagement','a-consent','a-parent-consent'].forEach(id=>{
       const el=document.getElementById(id); if(el) data[id]=el.checked;
     });
     data._step = wizCurrentStep;
@@ -2569,6 +3134,8 @@ function restaurerBrouillonWizard(){
     });
     if(data._step){ wizCurrentStep = data._step; wizUpdateUI(); }
     togglePPE();
+    toggleMinorFields();
+    toggleAutreProfession();
   }catch(e){}
 }
 
@@ -2601,7 +3168,7 @@ function validerTelephoneCM(tel){
 
 function validerEmail(email){
   if(!email) return true; // optionnel
-  return /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(email);
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
 function calculerAge(dateNaissance){
@@ -2614,6 +3181,13 @@ function calculerAge(dateNaissance){
   return age;
 }
 
+// ── VALIDATION — Prompt 5 : seuls NOM et PRÉNOM sont obligatoires ──
+// Tous les autres champs sont désormais facultatifs et ne bloquent jamais la progression
+// du formulaire. Ils sont simplement contrôlés au FORMAT s'ils sont renseignés (téléphone,
+// email), pour éviter les erreurs de saisie sans jamais empêcher l'inscription.
+// Exceptions (non "données à renseigner" mais engagements/accords légaux, donc conservés
+// comme obligatoires) : l'accord du représentant légal + sa signature pour les membres
+// mineurs (< 21 ans) — cf. Prompt 1 — ainsi que les cases d'engagement/consentement final.
 function validateStep(step){
   let ok = true;
   const req = (id, msg) => {
@@ -2621,53 +3195,49 @@ function validateStep(step){
     if(!el || !el.value || !el.value.trim()){ showFieldError(id, msg); ok=false; }
     else clearFieldError(id);
   };
+  const softCheck = (id) => { const el = document.getElementById(id); if(el) clearFieldError(id); };
 
   if(step===1){
     req('a-nom','Le nom est obligatoire');
     req('a-prenom','Le(s) prénom(s) sont obligatoires');
-    req('a-ddn','La date de naissance est obligatoire');
-    req('a-lieu-naissance','Le lieu de naissance est obligatoire');
-    const ddnVal = document.getElementById('a-ddn').value;
-    if(ddnVal){
-      const age = calculerAge(ddnVal);
-      if(age < 18){ showFieldError('a-ddn', 'Vous devez avoir au moins 18 ans pour adhérer (âge actuel : '+age+' ans)'); ok=false; }
+    softCheck('a-ddn'); softCheck('a-lieu-naissance');
+    // Aucun âge minimum : un compte peut être ouvert pour un bébé. En dessous de 21 ans,
+    // le bloc représentant légal (obligatoire) s'affiche automatiquement — cf. toggleMinorFields().
+    if(estMineur()){
+      if(!document.getElementById('a-parent-nom').value.trim()){ showFieldError('a-parent-nom','Le nom du représentant légal est obligatoire pour un membre mineur'); ok=false; } else clearFieldError('a-parent-nom');
+      if(!document.getElementById('a-parent-lien').value){ showFieldError('a-parent-lien','Précisez le lien de parenté'); ok=false; } else clearFieldError('a-parent-lien');
+      if(!document.getElementById('a-parent-piece').value.trim()){ showFieldError('a-parent-piece','La pièce d\'identité du représentant légal est obligatoire'); ok=false; } else clearFieldError('a-parent-piece');
+      if(!document.getElementById('a-parent-tel').value.trim()){ showFieldError('a-parent-tel','Le téléphone du représentant légal est obligatoire'); ok=false; } else clearFieldError('a-parent-tel');
+      if(!document.getElementById('a-parent-consent').checked){ showFieldError('a-parent-consent',"L'accord du représentant légal est obligatoire"); ok=false; } else clearFieldError('a-parent-consent');
+      if(signaturePadIsEmpty('sigPadParent')){ showFieldError('a-parent-signature','La signature du représentant légal est obligatoire'); ok=false; } else clearFieldError('a-parent-signature');
     }
-    if(!document.getElementById('a-sexe').value){ toast('Veuillez préciser le sexe','err'); ok=false; }
   }
 
   if(step===2){
-    req('a-cni','Le numéro de pièce est obligatoire');
-    req('a-tel','Le téléphone est obligatoire');
-    req('a-quartier','Le quartier est obligatoire');
-    req('a-adresse','La ville est obligatoire');
+    softCheck('a-cni'); softCheck('a-quartier'); softCheck('a-adresse');
     const tel = document.getElementById('a-tel').value.trim();
     if(tel && !validerTelephoneCM(tel)){
       showFieldError('a-tel','Numéro camerounais invalide. Format attendu : +237 6XX XX XX XX (MTN/Orange/Nexttel)');
       ok=false;
-    }
+    } else clearFieldError('a-tel');
     const email = document.getElementById('a-email').value.trim();
     if(email && !validerEmail(email)){
-      showFieldError('a-email','Format email invalide');
+      showFieldError('a-email','Format invalide — exemple attendu : prenom.nom@gmail.com');
       ok=false;
-    }
+    } else clearFieldError('a-email');
   }
 
   if(step===3){
-    req('a-profession','La profession est obligatoire');
-    if(!document.getElementById('a-source-revenus').value){ toast('Précisez la source de vos revenus','err'); ok=false; }
-    if(!document.getElementById('a-tranche').value){ toast('Précisez la tranche de premier dépôt','err'); ok=false; }
-    const hasCniR = document.getElementById('cniRectoInput')?.files?.[0];
-    if(!hasCniR){ toast("La photo recto de votre pièce d'identité est obligatoire",'err'); ok=false; }
+    softCheck('a-profession');
+    if(document.getElementById('a-profession').value==='Autre' && !document.getElementById('a-profession-autre').value.trim()){
+      toast('Précisez votre profession','err'); // information seulement, ne bloque pas
+    }
   }
 
   if(step===4){
-    if(!document.getElementById('a-origine-fonds').value){ toast("Précisez l'origine des fonds",'err'); ok=false; }
-    if(document.getElementById('a-ppe').checked && !document.getElementById('a-ppe-detail').value.trim()){
-      toast('Précisez la fonction concernée (PPE)','err'); ok=false;
-    }
-    if(!document.getElementById('a-part-sociale-engagement').checked){
-      toast("Veuillez confirmer votre engagement pour la part sociale",'err'); ok=false;
-    }
+    // La signature électronique du membre (ou de son représentant légal s'il est trop
+    // jeune pour signer) et l'acceptation des conditions restent des engagements requis.
+    if(signaturePadIsEmpty('sigPadMember')){ showFieldError('a-signature','La signature est obligatoire pour finaliser la demande'); ok=false; } else clearFieldError('a-signature');
     if(!document.getElementById('a-consent').checked){
       toast('Veuillez accepter les conditions','err'); ok=false;
     }
@@ -2712,29 +3282,45 @@ function sauvegarderAdhesionHorsLigne(memberData){
   localStorage.setItem('nfs_adhesions_attente', JSON.stringify(queue));
 }
 
+let _syncAdhesionsEnCours = false;
 async function synchroniserAdhesionsEnAttente(){
   if(!navigator.onLine) return;
+  if(_syncAdhesionsEnCours) return; // évite les synchronisations concurrentes
   const queue = JSON.parse(localStorage.getItem('nfs_adhesions_attente')||'[]');
   if(!queue.length) return;
-  const restantes = [];
-  for(const memberData of queue){
-    const result = await envoyerAdhesionAuServeur(memberData);
-    if(result && result.id){
-      const ref = result.id;
-      const d = Object.assign({}, memberData, { ref, id: ref, membreId: result.id, statut:'acceptee', date: todayFr(), dateIso: isoDay() });
-      const demandes = lsGet('nfs_demandes');
-      demandes.push(d);
-      lsSet('nfs_demandes', demandes);
-      gasPush('nfs_demandes', d);
-      toast('✅ Adhésion synchronisée — '+result.id,'ok');
-    } else {
-      restantes.push(memberData); // garder en attente si toujours en échec
+  _syncAdhesionsEnCours = true;
+  try{
+    const restantes = [];
+    for(const memberData of queue){
+      const result = await envoyerAdhesionAuServeur(memberData);
+      if(result && result.id){
+        const ref = result.id;
+        const d = Object.assign({}, memberData, { ref, id: ref, membreId: result.id, statut:'acceptee', date: todayFr(), dateIso: isoDay() });
+        // Met à jour l'entrée 'en_attente_sync' déjà visible côté admin plutôt que d'en
+        // créer une nouvelle, pour éviter les doublons dans la liste des demandes.
+        const demandes = lsGet('nfs_demandes');
+        const idx = demandes.findIndex(x=>x.uuid===memberData.uuid);
+        if(idx>=0) demandes[idx]=d; else demandes.push(d);
+        lsSet('nfs_demandes', demandes);
+        gasPush('nfs_demandes', d);
+        toast('✅ Adhésion synchronisée — '+result.id,'ok');
+      } else {
+        restantes.push(memberData); // garder en attente si toujours en échec
+      }
     }
+    localStorage.setItem('nfs_adhesions_attente', JSON.stringify(restantes));
+    if(restantes.length < queue.length) await gasPull('nfs_membres','nfs_membres');
+  } finally {
+    _syncAdhesionsEnCours = false;
   }
-  localStorage.setItem('nfs_adhesions_attente', JSON.stringify(restantes));
-  if(restantes.length < queue.length) await gasPull('nfs_membres','nfs_membres');
 }
 window.addEventListener('online', synchroniserAdhesionsEnAttente);
+// Prompt 10 : ne pas dépendre uniquement de l'événement 'online' (peu fiable sur mobile) —
+// on retente aussi à chaque retour au premier plan de l'app et à intervalle régulier tant
+// qu'il reste des demandes en attente, pour garantir qu'elles finissent par apparaître
+// dans la liste des demandes d'adhésion en attente côté admin.
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible') synchroniserAdhesionsEnAttente(); });
+setInterval(synchroniserAdhesionsEnAttente, 20000);
 
 // ── BULLETIN D'ADHÉSION IMPRIMABLE ──────────────────────────────
 function genererBulletinAdhesion(data, memberId){
@@ -2816,9 +3402,25 @@ function genererBulletinAdhesion(data, memberId){
         <tr><td class="lbl">Téléphone</td><td>${data.beneficiaireTel||'—'}</td></tr>
       </table>
 
+      ${data.estMineur ? `
+      <h2>Représentant légal (membre mineur)</h2>
+      <table>
+        <tr><td class="lbl">Nom et prénom</td><td>${data.parentNom||'—'}</td></tr>
+        <tr><td class="lbl">Lien de parenté</td><td>${data.parentLien||'—'}</td></tr>
+        <tr><td class="lbl">N° pièce d'identité</td><td>${data.parentPiece||'—'}</td></tr>
+        <tr><td class="lbl">Téléphone</td><td>${data.parentTel||'—'}</td></tr>
+        <tr><td class="lbl">Accord donné</td><td>${data.parentConsent?'Oui':'—'}</td></tr>
+      </table>` : ''}
+
       <div class="signatures">
-        <div class="sig-box"><div class="sig-line">Signature du membre</div></div>
-        <div class="sig-box"><div class="sig-line">Signature du caissier</div></div>
+        <div class="sig-box">
+          ${data.signatureMembre?`<img src="${data.signatureMembre}" style="max-width:100%;max-height:70px">`:''}
+          <div class="sig-line">Signature du membre${data.estMineur?' (ou représentant légal)':''}</div>
+        </div>
+        ${data.estMineur ? `<div class="sig-box">
+          ${data.signatureParent?`<img src="${data.signatureParent}" style="max-width:100%;max-height:70px">`:''}
+          <div class="sig-line">Signature du représentant légal</div>
+        </div>` : `<div class="sig-box"><div class="sig-line">Signature du caissier</div></div>`}
       </div>
 
       <div class="footer">NFS CAMEROON — Coopérative d'Épargne et de Crédit — Douala, Cameroun</div>
@@ -2855,7 +3457,8 @@ async function submitAdhesion(){
   const quartier = document.getElementById('a-quartier').value.trim();
   const adresse = document.getElementById('a-adresse').value.trim();
 
-  const profession = document.getElementById('a-profession').value.trim();
+  const professionSel = document.getElementById('a-profession').value.trim();
+  const profession = (professionSel === 'Autre') ? (document.getElementById('a-profession-autre')?.value.trim() || 'Autre') : professionSel;
   const sourceRevenus = document.getElementById('a-source-revenus').value;
   const agence = document.getElementById('a-agence').value;
   const parrain = document.getElementById('a-parrain').value.trim();
@@ -2874,6 +3477,24 @@ async function submitAdhesion(){
   if(!consent) return toast('Veuillez accepter les conditions','err');
   if(!partSocialeEngagement) return toast("Veuillez confirmer votre engagement pour la part sociale",'err');
 
+  // Informations sur le représentant légal — obligatoires uniquement si le membre est mineur (< 21 ans)
+  const mineur = estMineur();
+  const parentNom = mineur ? document.getElementById('a-parent-nom').value.trim() : '';
+  const parentLien = mineur ? document.getElementById('a-parent-lien').value : '';
+  const parentPiece = mineur ? document.getElementById('a-parent-piece').value.trim() : '';
+  const parentTel = mineur ? document.getElementById('a-parent-tel').value.trim() : '';
+  const parentConsent = mineur ? document.getElementById('a-parent-consent').checked : false;
+  const signatureParentDataUrl = mineur ? signaturePadDataUrl('sigPadParent') : '';
+  if(mineur && (!parentNom || !parentLien || !parentPiece || !parentTel || !parentConsent || !signatureParentDataUrl)){
+    toast("Les informations et la signature du représentant légal sont obligatoires pour un membre mineur",'err');
+    return;
+  }
+  const signatureMembreDataUrl = signaturePadDataUrl('sigPadMember');
+  if(!signatureMembreDataUrl){
+    toast('La signature est obligatoire pour finaliser la demande','err');
+    return;
+  }
+
   const produits=[];
   if(document.getElementById('a-ep').checked) produits.push('Épargne');
   if(document.getElementById('a-cc').checked) produits.push('Compte courant');
@@ -2882,6 +3503,7 @@ async function submitAdhesion(){
   // UUID de déduplication — garantit qu'une même demande envoyée plusieurs fois
   // (ex: après une coupure réseau suivie d'un retry) n'est jamais traitée deux fois.
   const uuid = uuidv4ForAdhesion();
+  const refLocale = uuid.slice(0,8).toUpperCase();
 
   const memberData = {
     uuid, typeMembre, nom, prenom, sexe, ddn, lieuNaissance, nationalite, situationMatri,
@@ -2892,8 +3514,27 @@ async function submitAdhesion(){
     beneficiaireNom, beneficiaireLien, beneficiaireTel,
     estPPE, detailPPE, origineFonds,
     partSociale: getPartSocialeMontant(), partSocialeEngagement,
+    estMineur: mineur, parentNom, parentLien, parentPiece, parentTel, parentConsent,
+    signatureMembre: signatureMembreDataUrl, signatureParent: signatureParentDataUrl,
     photoUrl: '', cniRectoUrl: '', cniVersoUrl: ''
   };
+
+  // ── Prompt 10 : le brouillon "en attente" doit TOUJOURS être visible côté admin ──
+  // Avant même de tenter l'envoi réseau, on inscrit systématiquement une trace locale ET
+  // on tente immédiatement une écriture "légère" (sans pièces jointes) vers le registre
+  // partagé des demandes avec le statut 'en_attente_sync'. Ainsi, même si l'appel complet
+  // échoue plus tard, l'admin voit déjà la demande apparaître (avec un badge "sync en cours")
+  // au lieu qu'elle reste invisible, cachée uniquement dans le stockage local du membre.
+  const dEnAttente = Object.assign({}, memberData, {
+    ref: refLocale, id: refLocale, membreId: '',
+    statut: 'en_attente_sync', date: todayFr(), dateIso: isoDay()
+  });
+  const demandesLocales = lsGet('nfs_demandes');
+  if(!demandesLocales.some(x=>x.uuid===uuid)){
+    demandesLocales.push(dEnAttente);
+    lsSet('nfs_demandes', demandesLocales);
+  }
+  try{ if(navigator.onLine) await gasPush('nfs_demandes', dEnAttente); }catch(e){ /* on retentera plus tard, ce n'est pas bloquant */ }
 
   // Mode hors-ligne : si pas de réseau, sauvegarder en file d'attente locale
   // et synchroniser automatiquement au retour de connexion.
@@ -2901,7 +3542,7 @@ async function submitAdhesion(){
     await sauvegarderAdhesionHorsLigne(memberData);
     showSuccess('📶', 'Demande enregistrée hors-ligne',
       "Votre demande sera transmise automatiquement dès que la connexion réseau sera rétablie. Vous recevrez vos identifiants par email à ce moment-là.",
-      'Référence locale : ' + uuid.slice(0,8).toUpperCase());
+      'Référence locale : ' + refLocale);
     resetWizard();
     return;
   }
@@ -2928,24 +3569,29 @@ async function submitAdhesion(){
   const createResult = await envoyerAdhesionAuServeur(memberData);
 
   if(!createResult || !createResult.id){
-    // Échec réseau malgré la détection online — mise en file d'attente de secours
+    // Échec réseau malgré la détection online — mise en file d'attente de secours.
+    // La demande reste visible côté admin grâce à l'entrée 'en_attente_sync' déjà poussée
+    // ci-dessus (au lieu de disparaître silencieusement dans le stockage local du membre).
     await sauvegarderAdhesionHorsLigne(memberData);
     toast("⚠️ Connexion instable — votre demande sera envoyée automatiquement",'err');
     showSuccess('📶', 'Demande mise en attente',
       "Une difficulté de connexion a été rencontrée. Votre demande est sauvegardée et sera transmise automatiquement.",
-      'Référence locale : ' + uuid.slice(0,8).toUpperCase());
+      'Référence locale : ' + refLocale);
     resetWizard();
     return;
   }
 
-  // Garder une trace dans nfs_demandes pour l'historique admin (déjà acceptée)
+  // Garder une trace dans nfs_demandes pour l'historique admin (déjà acceptée) — on met à
+  // jour l'entrée 'en_attente_sync' existante plutôt que d'en pousser une nouvelle, pour
+  // éviter tout doublon dans la liste des demandes.
   const ref = createResult.id;
   const d = Object.assign({}, memberData, {
     ref, id: ref, membreId: createResult.id,
     statut: 'acceptee', date: todayFr(), dateIso: isoDay()
   });
   const demandes = lsGet('nfs_demandes');
-  demandes.push(d);
+  const idxExist = demandes.findIndex(x=>x.uuid===uuid);
+  if(idxExist>=0) demandes[idxExist] = d; else demandes.push(d);
   lsSet('nfs_demandes', demandes);
   gasPush('nfs_demandes', d);
 
@@ -3137,7 +3783,13 @@ function updateRetraitSolde(){
   const compte = document.getElementById('retraitCompte')?.value || 'EP';
   const solde = compte==='CC' ? (parseFloat(ME.soldeCC)||0) : (parseFloat(ME.soldeEP)||0);
   const el = document.getElementById('retraitSoldeCompte');
-  if(el) el.textContent = 'Solde disponible : ' + fmt(solde);
+  if(!el) return;
+  if(compte==='EP'){
+    const maxRetirable = Math.max(0, solde - SOLDE_MIN_EPARGNE);
+    el.textContent = 'Solde disponible : '+fmt(solde)+' · Retrait maximum : '+fmt(maxRetirable)+' (minimum '+fmt(SOLDE_MIN_EPARGNE)+' non retirable)';
+  } else {
+    el.textContent = 'Solde disponible : ' + fmt(solde);
+  }
 }
 
 // Basculer entre virement Cameroun et International
@@ -3224,8 +3876,9 @@ window.addEventListener('load',async()=>{
   loadBanquesCM();
   loadAgences();
   synchroniserAdhesionsEnAttente();
+  synchroniserCreditsEnAttente();
   await gasPull('nfs_membres','nfs_membres');
-  await Promise.all([gasPull('nfs_transactions','nfs_transactions'),gasPull('nfs_credits','nfs_credits'),gasPull('nfs_demandes','nfs_demandes')]);
+  await Promise.all([gasPull('nfs_transactions','nfs_transactions'),gasPull('nfs_credits','nfs_credits'),gasPull('nfs_demandes','nfs_demandes'),gasPull('nfs_cep','nfs_cep')]);
   checkUpdate();
   // Init mode retrait
   const modeRadio = document.querySelector('input[name="retraitMode"]');
@@ -3234,6 +3887,7 @@ window.addEventListener('load',async()=>{
     await gasPull('nfs_membres','nfs_membres');
     await gasPull('nfs_transactions','nfs_transactions');
     await gasPull('nfs_credits','nfs_credits');
+    await gasPull('nfs_cep','nfs_cep');
     if(ME){const f=getMembres().find(m=>m.id===ME.id);if(f)ME=f;}
   },10000);
 });
