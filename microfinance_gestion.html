@@ -1907,7 +1907,11 @@ function admClotureCEP(cepId, estAnticipe){
   if(!confirm(msg)) return;
   requireAdminPin('Clôturer le compte Épargne Projet '+cepId+' (PIN requis)', async ()=>{
     const resp = await gasPostWithResponse({ action:'cloturerCEPAuto', cepId, anticipe: !!estAnticipe });
-    if(!resp || !resp.ok || !resp.cloture){ toast('❌ Échec de la clôture','err'); return; }
+    if(!resp || !resp.ok || !resp.cloture){
+      const raison = resp && resp.error ? resp.error : 'échec de la clôture — vérifiez la connexion';
+      toast('❌ '+raison,'err');
+      return;
+    }
     const i = S.cep.findIndex(c=>c.id===cepId);
     if(i>=0){
       S.cep[i].statut='cloture';
@@ -2102,7 +2106,11 @@ async function saveCr(){
   const uuid = uuidv4ForAdhesion();
   const creditData={uuid,membreId:mId,montant:M,duree:n,taux,mensualite:mens,objet:document.getElementById('cr-ob').value,garantie:document.getElementById('cr-ga').value,statut:'attente',date:isoDay(),rembourse:0};
   const resp = await gasPostWithResponse({ action:'soumettreCreditAuto', creditData });
-  if(!resp || !resp.ok || !resp.credit || !resp.credit.id){ toast('❌ Échec de la création — vérifiez la connexion','err'); return; }
+  if(!resp || !resp.ok || !resp.credit || !resp.credit.id){
+    const raison = resp && resp.error ? resp.error : 'vérifiez la connexion';
+    toast('❌ Échec de la création — '+raison,'err');
+    return;
+  }
   const cr = Object.assign({}, creditData, { id: resp.credit.id });
   S.credits.push(cr);lsSave();
   toast('Dossier '+cr.id+' soumis','ok');closeM('mCr');renderCredits();
