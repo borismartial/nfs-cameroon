@@ -1127,7 +1127,7 @@ body{background:var(--bg);color:var(--text);max-width:430px;margin:0 auto;min-he
 // ── GOOGLE APPS SCRIPT SYNC ───────────────────────────────────
 // Solde minimum obligatoire et non retirable sur le compte Épargne (EP), toutes voies de retrait confondues.
 const SOLDE_MIN_EPARGNE = 5000;
-const GAS_URL = "https://script.google.com/macros/s/AKfycbyIzgPsZuL_C9lvpz2jlfwHyfabhjMk8bWcWnAyrAupofc1cwks3hTPSHmYFUBXQ98/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbyPYGW2r0HJL3ao_c7hKT553YyTFFa3pGD-vTKdkWulL4dX-lkyuUgaPtE7_FmOzzs/exec";
 
 // GET via JSONP (contourne CORS)
 function gasGet(table) {
@@ -2370,7 +2370,8 @@ async function soumettreCEP(){
     toast('Ouverture du compte en cours...');
     const resp = await gasPostWithResponse({ action:'ouvrirCEPAuto', cepData });
     if(!resp || !resp.ok || !resp.cep || !resp.cep.id){
-      toast('❌ Échec — vérifiez votre connexion et réessayez','err');
+      const raison = resp && resp.error ? resp.error : 'vérifiez votre connexion et réessayez';
+      toast('❌ Échec — '+raison,'err');
       return;
     }
     const cep = Object.assign({}, cepData, { id: resp.cep.id, dateEcheance: resp.cep.dateEcheance, statut:'actif', rachatAnticipe:'Non' });
@@ -2401,7 +2402,8 @@ function demanderClotureCEP(cepId, estAnticipe){
     toast('Traitement en cours...');
     const resp = await gasPostWithResponse({ action:'cloturerCEPAuto', cepId, anticipe: !!estAnticipe });
     if(!resp || !resp.ok || !resp.cloture){
-      toast('❌ Échec — réessayez','err');
+      const raison = resp && resp.error ? resp.error : 'réessayez';
+      toast('❌ Échec — '+raison,'err');
       return;
     }
     const liste = getCEP();
@@ -2711,12 +2713,20 @@ function demandeCredit(){
     };
 
     let creditId = null;
+    let erreurServeur = null;
 
     if(navigator.onLine){
       const resp = await gasPostWithResponse({ action: 'soumettreCreditAuto', creditData });
       if(resp && resp.ok && resp.credit && resp.credit.id){
         creditId = resp.credit.id;
+      } else if(resp && resp.error){
+        // Le serveur a répondu mais a rejeté la demande (ex: action non reconnue
+        // car le backend Apps Script n'a pas encore été redéployé avec la
+        // dernière version du code) — ce n'est PAS un problème de connexion,
+        // on le montre donc clairement au lieu du message générique trompeur.
+        erreurServeur = resp.error;
       }
+      // Si resp est null (pas de réponse du tout), c'est un vrai problème réseau/timeout.
     }
 
     if(creditId){
@@ -2760,15 +2770,21 @@ function demandeCredit(){
         }, 300);
       }
     } else {
-      // Hors-ligne ou échec réseau — mettre en file d'attente locale et réessayer
-      // automatiquement (même mécanisme robuste que les demandes d'adhésion :
-      // retry au retour en ligne, au retour au premier plan, et périodiquement).
+      // Mettre en file d'attente locale et réessayer automatiquement (même
+      // mécanisme robuste que les demandes d'adhésion : retry au retour en
+      // ligne, au retour au premier plan, et périodiquement).
       const queue = JSON.parse(localStorage.getItem('nfs_credits_attente')||'[]');
       queue.push(creditData);
       localStorage.setItem('nfs_credits_attente', JSON.stringify(queue));
-      showSuccess('📶','Demande mise en attente',
-        "Une difficulté de connexion a été rencontrée. Votre dossier est sauvegardé et sera transmis automatiquement dès le retour de la connexion.",
-        'Référence locale : '+uuid.slice(0,8).toUpperCase());
+      if(erreurServeur){
+        showSuccess('⚠️','Demande mise en attente',
+          "Le serveur a refusé la demande (" + erreurServeur + "). Elle sera retentée automatiquement, mais si cette erreur persiste, contactez votre administrateur — cela signifie généralement que le backend doit être mis à jour.",
+          'Référence locale : '+uuid.slice(0,8).toUpperCase());
+      } else {
+        showSuccess('📶','Demande mise en attente',
+          "Une difficulté de connexion a été rencontrée. Votre dossier est sauvegardé et sera transmis automatiquement dès le retour de la connexion.",
+          'Référence locale : '+uuid.slice(0,8).toUpperCase());
+      }
     }
 
     document.getElementById('crMontant').value='';
@@ -3833,7 +3849,7 @@ function purgeCacheSiNouvelleVersion(){
     localStorage.setItem('nfs_app_version', APP_VERSION);
   }
 }
-const APP_VERSION_URL = 'https://script.google.com/macros/s/AKfycbyIzgPsZuL_C9lvpz2jlfwHyfabhjMk8bWcWnAyrAupofc1cwks3hTPSHmYFUBXQ98/exec?action=get&table=nfs_versions&t=';
+const APP_VERSION_URL = 'https://script.google.com/macros/s/AKfycbyPYGW2r0HJL3ao_c7hKT553YyTFFa3pGD-vTKdkWulL4dX-lkyuUgaPtE7_FmOzzs/exec?action=get&table=nfs_versions&t=';
 
 async function checkUpdate(){
   try {
