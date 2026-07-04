@@ -699,7 +699,10 @@ function deconnecterUtilisateur(){
 
 function entrerDansApp(){
   document.getElementById('loginGateScreen').style.display = 'none';
-  document.getElementById('appRoot').style.display = 'block';
+  const root = document.getElementById('appRoot');
+  root.style.display = 'flex';
+  root.style.width = '100%';
+  root.style.height = '100%';
   document.getElementById('topRoleBadge').textContent = ROLE_LABELS[CURRENT_USER.role].toUpperCase();
   construireNavPourRole();
   const premierePagePourRole = {
