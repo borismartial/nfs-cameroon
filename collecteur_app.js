@@ -137,9 +137,10 @@ function toast(msg,type=''){const t=document.getElementById('toast');t.textConte
 function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
 
 // ── GAS NETWORK LAYER ────────────────────────────────────────
+let _gasGetCallbackCounter = 0;
 function gasGet(table) {
   return new Promise((resolve) => {
-    const cbName = 'cb_' + Date.now() + '_' + Math.floor(Math.random()*10000);
+    const cbName = 'cb_' + Date.now() + '_' + (_gasGetCallbackCounter++) + '_' + Math.random().toString(36).slice(2,8);
     const script = document.createElement('script');
     const timer = setTimeout(() => {
       delete window[cbName];
@@ -1137,6 +1138,17 @@ window.addEventListener('load', async () => {
       cyclesSynchronisationCredits();
       cyclesSynchronisationVirements();
       rafraichirSoldeCollecteur();
+      // Recharge aussi les affectations de portefeuille — sans ce rafraîchissement
+      // périodique, un client nouvellement affecté par l'admin (ou par un
+      // responsable) n'apparaissait jamais tant que le collecteur ne se
+      // déconnectait pas puis reconnectait explicitement.
+      chargerPortefeuille().then(()=>{
+        // Si le collecteur est déjà en train de regarder son portefeuille au
+        // moment du rafraîchissement, on met la vue à jour immédiatement au
+        // lieu d'attendre qu'il quitte puis revienne sur l'écran.
+        const ecranActif = document.querySelector('.screen.active');
+        if(ecranActif && ecranActif.id==='tourneeScreen') renderTournee();
+      });
     }
   }, 20000);
 

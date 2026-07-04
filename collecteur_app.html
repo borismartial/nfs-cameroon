@@ -1580,6 +1580,14 @@ window.addEventListener('load', async () => {
       cyclesSynchronisationCredits();
       cyclesSynchronisationVirements();
       rafraichirSoldeCollecteur();
+      // Recharge aussi les affectations de portefeuille — sans ce rafraîchissement
+      // périodique, un client nouvellement affecté par l'admin (ou par un
+      // responsable) n'apparaissait jamais tant que le collecteur ne se
+      // déconnectait pas puis reconnectait explicitement.
+      chargerPortefeuille().then(()=>{
+        const ecranActif = document.querySelector('.screen.active');
+        if(ecranActif && ecranActif.id==='tourneeScreen') renderTournee();
+      });
     }
   }, 20000);
 
