@@ -340,6 +340,11 @@ tr:hover td{background:#F8FAFC;}
         <div class="fg full"><label>Adresse</label><input class="fi" id="m-adresse" placeholder="Quartier, Ville"></div>
         <div class="fg"><label>Profession</label><input class="fi" id="m-profession"></div>
         <div class="fg"><label>Agence</label><select class="fi" id="m-agence"></select></div>
+        <div class="fg" id="m-gestionnaire-group" style="display:none">
+          <label>Gestionnaire de compte assigné</label>
+          <select class="fi" id="m-gestionnaire"><option value="">— Aucun —</option></select>
+          <div style="font-size:10px;color:var(--muted);margin-top:2px">Réservé au Responsable d'agence, Responsable régional et Administrateur</div>
+        </div>
         <div class="fg"><label>PIN (4 chiffres) *</label><input class="fi" id="m-pin" type="password" maxlength="4" placeholder="PIN connexion app"></div>
         <div class="fg"><label>Dépôt initial EP (FCFA)</label><input class="fi" id="m-initEP" type="number" min="0" placeholder="0"></div>
         <div class="fg"><label>Dépôt initial CC (FCFA)</label><input class="fi" id="m-initCC" type="number" min="0" placeholder="0"></div>
@@ -594,7 +599,7 @@ function compressImage(dataUrl, maxWidth, quality) {
 // jusqu'ici — sa référence sans définition aurait provoqué une erreur silencieuse
 // pour tout admin n'ayant jamais changé son PIN.
 const ADMIN_PIN = '1234';
-const S={membres:[],transactions:[],credits:[],cep:[],agences:[],demandes:[],commerciaux:[],portefeuilles:[],creditsCollecteurs:[],utilisateurs:[],currentOp:null,editId:null,pendingAction:null};
+const S={membres:[],transactions:[],credits:[],cep:[],agences:[],demandes:[],commerciaux:[],portefeuilles:[],creditsCollecteurs:[],utilisateurs:[],collectes:[],clotures:[],currentOp:null,editId:null,pendingAction:null};
 
 // ── SYSTÈME MULTI-RÔLES ──────────────────────────────────────────────
 // CURRENT_USER décrit qui est connecté : { id, nom, prenom, role, agence, region }.
@@ -719,11 +724,13 @@ const ROLE_NAV_CONFIG = {
   admin: [
     {sec:'Principal', items:[['dashboard','📊','Tableau de bord'],['membres','👥','Membres']]},
     {sec:'Opérations', items:[['depots','📥','Dépôts / Retraits','badge-depots'],['virements','↔️','Virements'],['credits','💳','Crédits'],['cep','🎯','Épargne Projet']]},
-    {sec:'Administration', items:[['demandes','✍️',"Demandes adhésion",'badge-demandes'],['media','📸','Pièces jointes'],['agences','🏢','Agences'],['commerciaux','🚶','Commerciaux'],['utilisateurs','🔑','Utilisateurs'],['rapports','📈','Rapports']]}
+    {sec:'Équipes', items:[['collecteurs_menu','🚶','Collecteurs / Commerciaux'],['gestionnaires_compte_menu','👥','Gestionnaires de compte'],['agents_credit_menu','💳','Agents de crédit'],['responsables_agence_menu','🏢',"Responsables d'agence"],['responsables_regionaux_menu','🗺️','Responsables régionaux']]},
+    {sec:'Administration', items:[['demandes','✍️',"Demandes adhésion",'badge-demandes'],['media','📸','Pièces jointes'],['agences','🏢','Agences'],['rapports','📈','Rapports']]}
   ],
   collecteur: [
     {sec:'Ma journée', items:[['dashboard_collecteur','📊','Tableau de bord du jour']]},
-    {sec:'Mon activité', items:[['mon_portefeuille','👥','Mon portefeuille'],['mes_demandes_credit','✍️',"Mes demandes"]]}
+    {sec:'Collecte', items:[['encaissement_collecteur','💰','Encaisser un versement/retrait'],['cloture_collecteur','🧾','Clôture de caisse']]},
+    {sec:'Mon activité', items:[['mon_portefeuille','👥','Mon portefeuille'],['mes_performances','📈','Mes performances'],['mes_demandes_credit','✍️',"Mes demandes de crédit"]]}
   ],
   gestionnaire_compte: [
     {sec:'Principal', items:[['dashboard_gcm','📊','Tableau de bord']]},
@@ -779,6 +786,41 @@ function creditsVisibles(){
   return S.credits.filter(c=>idsAgence.has(c.membreId));
 }
 
+// ── HELPERS DE PÉRIMÈTRE PARAMÉTRÉS (par agence/région) ──────────────────
+// Contrairement à *Visibles() ci-dessus (liées à CURRENT_USER), ces fonctions
+// permettent de calculer le périmètre supervisé par N'IMPORTE QUELLE personne
+// (utile pour les rapports d'activité synthétisés dans les menus dédiés
+// Collecteurs / Gestionnaires / Agents de crédit / Responsables).
+function membresParAgence(agence){
+  if(!agence) return [];
+  return S.membres.filter(m=>m.agence===agence);
+}
+function creditsParAgence(agence){
+  const ids = new Set(membresParAgence(agence).map(m=>m.id));
+  return S.credits.filter(c=>ids.has(c.membreId));
+}
+function membresParRegion(region){
+  if(!region) return [];
+  const agencesRegion = new Set(S.agences.filter(a=>a.region===region).map(a=>a.id));
+  return S.membres.filter(m=>agencesRegion.has(m.agence));
+}
+function creditsParRegion(region){
+  const ids = new Set(membresParRegion(region).map(m=>m.id));
+  return S.credits.filter(c=>ids.has(c.membreId));
+}
+// Activité réelle d'un collecteur : ses collectes enregistrées (versements/retraits
+// saisis depuis l'app terrain), sur les 30 derniers jours glissants et au total.
+function activiteCollecteur(commercialId){
+  const mesCollectes = S.collectes.filter(c=>c.commercialId===commercialId);
+  const auj = new Date();
+  const il30j = new Date(auj); il30j.setDate(il30j.getDate()-30);
+  const recentes = mesCollectes.filter(c=>{ const d=new Date(c.dateCollecte||c.dateSync); return !isNaN(d) && d>=il30j; });
+  const totalVerse30j = recentes.filter(c=>c.type==='VERSEMENT').reduce((s,c)=>s+(parseFloat(c.montant)||0),0);
+  const nbOps30j = recentes.length;
+  const derniereActivite = mesCollectes.length ? mesCollectes.reduce((max,c)=>{ const d=(c.dateCollecte||c.dateSync||''); return d>max?d:max; }, '') : null;
+  return { totalVerse30j, nbOps30j, totalOps: mesCollectes.length, derniereActivite };
+}
+
 // Version du logiciel — incrémentée à chaque correction structurelle des données
 // pour forcer une purge ponctuelle du cache local lors de la prochaine ouverture.
 const ADMIN_VERSION = '1.2';
@@ -808,6 +850,8 @@ function lsLoad(){
   S.credits=dedupeById(JSON.parse(localStorage.getItem('nfs_credits')||'[]'), 'id');
   S.cep=dedupeById(JSON.parse(localStorage.getItem('nfs_cep')||'[]'), 'id');
   S.utilisateurs=dedupeById(JSON.parse(localStorage.getItem('nfs_utilisateurs')||'[]'), 'id');
+  S.collectes=dedupeById(JSON.parse(localStorage.getItem('nfs_collectes')||'[]'), 'id');
+  S.clotures=JSON.parse(localStorage.getItem('nfs_clotures')||'[]');
   S.agences=JSON.parse(localStorage.getItem('nfs_agences')||'[]');
   S.demandes=dedupeById(JSON.parse(localStorage.getItem('nfs_demandes')||'[]'), 'ref');
   S.commerciaux=dedupeById(JSON.parse(localStorage.getItem('nfs_commerciaux')||'[]'), 'id');
@@ -825,6 +869,8 @@ function lsSave(){
   localStorage.setItem('nfs_credits',JSON.stringify(S.credits));
   localStorage.setItem('nfs_cep',JSON.stringify(S.cep));
   localStorage.setItem('nfs_utilisateurs',JSON.stringify(S.utilisateurs));
+  localStorage.setItem('nfs_collectes',JSON.stringify(S.collectes));
+  localStorage.setItem('nfs_clotures',JSON.stringify(S.clotures));
   localStorage.setItem('nfs_agences',JSON.stringify(S.agences));
   localStorage.setItem('nfs_demandes',JSON.stringify(S.demandes));
   localStorage.setItem('nfs_commerciaux',JSON.stringify(S.commerciaux));
@@ -865,6 +911,8 @@ async function pullAll(){
     gasPull('nfs_credits','nfs_credits'),
     gasPull('nfs_cep','nfs_cep'),
     gasPull('nfs_utilisateurs','nfs_utilisateurs'),
+    gasPull('nfs_collectes','nfs_collectes'),
+    gasPull('nfs_clotures','nfs_clotures'),
     gasPull('nfs_demandes','nfs_demandes'),
     gasPull('nfs_agences','nfs_agences'),
     gasPull('nfs_commerciaux','nfs_commerciaux'),
@@ -985,8 +1033,11 @@ function validateAdminPin(){
 const PAGE_TITLES={dashboard:'Tableau de bord',membres:'Membres',depots:'Dépôts & Retraits',
   virements:'Virements',credits:'Crédits',cep:'Épargne Projet',demandes:"Demandes d'adhésion",media:'Pièces jointes',agences:'Agences',commerciaux:'Commerciaux',utilisateurs:'Utilisateurs',rapports:'Rapports',
   dashboard_collecteur:'Tableau de bord du jour', mon_portefeuille:'Mon portefeuille', mes_demandes_credit:'Mes demandes de crédit',
+  encaissement_collecteur:'Encaisser un versement/retrait', cloture_collecteur:'Clôture de caisse', mes_performances:'Mes performances',
   dashboard_gcm:'Tableau de bord', dashboard_gcr:'Tableau de bord crédit', recouvrement:'Recouvrement',
-  dashboard_agence:"Tableau de bord agence", dashboard_regional:'Tableau de bord régional'};
+  dashboard_agence:"Tableau de bord agence", dashboard_regional:'Tableau de bord régional',
+  collecteurs_menu:'Collecteurs / Commerciaux', gestionnaires_compte_menu:'Gestionnaires de compte membres',
+  agents_credit_menu:'Agents de crédit', responsables_agence_menu:"Responsables d'agence", responsables_regionaux_menu:'Responsables régionaux'};
 let currentPage='dashboard';
 function nav(page){
   currentPage=page;
@@ -999,8 +1050,12 @@ function nav(page){
   ({dashboard:renderDash,membres:renderMembres,depots:renderDepots,virements:renderVirements,
     credits:renderCredits,cep:renderCEP,demandes:renderDemandes,media:renderMedia,agences:renderAgences,commerciaux:renderCommerciaux,utilisateurs:renderUtilisateurs,rapports:renderRapports,
     dashboard_collecteur:renderDashboardCollecteur, mon_portefeuille:renderMonPortefeuille, mes_demandes_credit:renderMesDemandesCredit,
+    encaissement_collecteur:renderEncaissementCollecteur, cloture_collecteur:renderClotureCollecteur, mes_performances:renderMesPerformances,
     dashboard_gcm:renderDashboardGCM, dashboard_gcr:renderDashboardGCR, recouvrement:renderRecouvrement,
-    dashboard_agence:renderDashboardAgence, dashboard_regional:renderDashboardRegional
+    dashboard_agence:renderDashboardAgence, dashboard_regional:renderDashboardRegional,
+    collecteurs_menu:renderCollecteursMenu, gestionnaires_compte_menu:()=>renderRoleMenu('gestionnaire_compte'),
+    agents_credit_menu:()=>renderRoleMenu('gestionnaire_credit'), responsables_agence_menu:()=>renderRoleMenu('responsable_agence'),
+    responsables_regionaux_menu:()=>renderRoleMenu('responsable_regional')
   })[page]?.();
   setTimeout(autoLabelTables, 30);
   closeMobileMenu();
@@ -1321,16 +1376,19 @@ function renderMembres(filter=''){
     <div class="card-hd"><h3>Membres (${list.length})</h3></div>
     <div style="padding:0">
       <table>
-        <tr><th>ID</th><th>Nom</th><th>Type</th><th>Téléphone</th><th>Épargne</th><th>Courant</th><th>Statut</th><th>Inactivité</th><th>Actions</th></tr>
+        <tr><th>ID</th><th>Nom</th><th>Type</th><th>Téléphone</th><th>Agence</th><th>Gestionnaire</th><th>Épargne</th><th>Courant</th><th>Statut</th><th>Inactivité</th><th>Actions</th></tr>
         ${list.length?list.map(m=>{
           const txs=S.transactions.filter(t=>t.membreId===m.id&&t.statut==='approuve');
           const last=txs.length?txs.map(t=>t.date).sort().reverse()[0]:m.dateAdhesion;
           const jours=last?Math.floor((new Date()-new Date(last))/86400000):999;
+          const gestionnaire = m.gestionnaireCompteId ? S.utilisateurs.find(u=>u.id===m.gestionnaireCompteId) : null;
           return `<tr>
             <td class="fw7" style="color:var(--blue);font-size:11px">${m.id}</td>
             <td>${m.nom} ${m.prenom}</td>
             <td>${badgeTypeMembre(m.typeMembre)}</td>
             <td>${m.tel||'—'}</td>
+            <td class="fs11">${m.agence||'—'}</td>
+            <td class="fs11">${gestionnaire ? gestionnaire.nom+' '+gestionnaire.prenom : '<span style="color:var(--muted)">Non assigné</span>'}</td>
             <td class="fw7 text-g">${fmt(m.soldeEP)}</td>
             <td class="fw7" style="color:var(--blue)">${fmt(m.soldeCC)}</td>
             <td><span class="st st-${m.statut}">${m.statut}</span></td>
@@ -1341,7 +1399,7 @@ function renderMembres(filter=''){
               <button class="btn btn-p btn-sm" onclick="openMembre('${m.id}')">✏️</button>
               <button class="btn btn-d btn-sm" onclick="supprimerMembre('${m.id}')">🗑️</button>
             </div></td>
-          </tr>`;}).join(''):'<tr><td colspan="9" class="empty">Aucun membre</td></tr>'}
+          </tr>`;}).join(''):'<tr><td colspan="11" class="empty">Aucun membre</td></tr>'}
       </table>
     </div>
   </div>`;
@@ -1372,6 +1430,20 @@ function openMembre(id=null){
   ['m-nom','m-prenom','m-tel','m-email','m-cni','m-ddn','m-adresse','m-profession','m-pin','m-initEP','m-initCC'].forEach(f=>{const el=document.getElementById(f);if(el)el.value='';});
   document.getElementById('m-type-membre').value='physique';
   fillAgenceSelect('m-agence');
+
+  // ── Attribution d'un gestionnaire de compte — réservé à Responsable
+  // d'agence, Responsable régional et Administrateur (pas au gestionnaire
+  // de compte lui-même, ni au collecteur/agent de crédit).
+  const peutAssignerGestionnaire = CURRENT_USER && ['admin','responsable_agence','responsable_regional'].includes(CURRENT_USER.role);
+  const gGroup = document.getElementById('m-gestionnaire-group');
+  gGroup.style.display = peutAssignerGestionnaire ? 'block' : 'none';
+  if(peutAssignerGestionnaire){
+    const agenceActuelle = id ? (getMembre(id)?.agence||'') : '';
+    const gestionnaires = S.utilisateurs.filter(u=>u.role==='gestionnaire_compte' && (!agenceActuelle || u.agence===agenceActuelle));
+    const gSel = document.getElementById('m-gestionnaire');
+    gSel.innerHTML = '<option value="">— Aucun —</option>' + gestionnaires.map(g=>`<option value="${g.id}">${g.nom} ${g.prenom} (${g.agence||'—'})</option>`).join('');
+  }
+
   if(id){
     const m=getMembre(id);
     if(m){
@@ -1385,6 +1457,7 @@ function openMembre(id=null){
       document.getElementById('m-adresse').value=m.adresse||'';
       document.getElementById('m-profession').value=m.profession||'';
       document.getElementById('m-agence').value=m.agence||'';
+      if(peutAssignerGestionnaire) document.getElementById('m-gestionnaire').value=m.gestionnaireCompteId||'';
     }
   }
   openM('mMembre');
@@ -1398,6 +1471,12 @@ function saveMembre(){
   if(!nom||!prenom) return toast('Nom et prénom obligatoires','err');
   if(!S.editId&&!pin) return toast('PIN obligatoire pour un nouveau membre','err');
   if(pin&&pin.length!==4) return toast('PIN doit avoir exactement 4 chiffres','err');
+  // Le champ n'est modifiable (et visible) que pour Responsable d'agence,
+  // Responsable régional et Administrateur — on ne touche à cette valeur que
+  // si le champ était réellement affiché, pour ne jamais l'écraser silencieusement
+  // par une valeur vide quand un autre rôle enregistre le même formulaire.
+  const gestionnaireVisible = document.getElementById('m-gestionnaire-group').style.display !== 'none';
+  const gestionnaireCompteId = gestionnaireVisible ? document.getElementById('m-gestionnaire').value : undefined;
   if(S.editId){
     const idx=S.membres.findIndex(m=>m.id===S.editId);
     if(idx>=0){
@@ -1410,6 +1489,7 @@ function saveMembre(){
         profession:document.getElementById('m-profession').value,
         agence:document.getElementById('m-agence').value,
         ...(pin?{pin}:{}),
+        ...(gestionnaireCompteId!==undefined?{gestionnaireCompteId}:{}),
       });
       lsSave();gasPush('nfs_membres',S.membres[idx]);toast("Membre mis à jour","ok");
     }
@@ -1425,6 +1505,7 @@ function saveMembre(){
       adresse:document.getElementById('m-adresse').value,
       profession:document.getElementById('m-profession').value,
       agence:document.getElementById('m-agence').value,
+      gestionnaireCompteId: gestionnaireCompteId||'',
       pin:pin,pinAChanger:true,
       soldeCC:initCC,soldeEP:initEP,statut:'actif',dateAdhesion:isoDay(),derniereOp:isoDay()};
     S.membres.push(m);
@@ -2584,7 +2665,7 @@ function reinitialiserPinCommercial(id){
     const resp = await gasPostWithResponse({ action:'upsert', table:'nfs_commerciaux', row: com });
     if(!resp || !resp.ok){ toast('❌ Échec de la réinitialisation — vérifiez la connexion','err'); return; }
     alert('Nouveau PIN pour '+com.nom+' '+com.prenom+' ('+com.id+') :\n\n'+nouveauPin+'\n\nCommuniquez-le-lui directement — il devra en définir un nouveau à sa prochaine connexion.');
-    renderCommerciaux();
+    if(currentPage==='collecteurs_menu') renderCollecteursMenu(); else renderCommerciaux();
   });
 }
 
@@ -2723,7 +2804,7 @@ function toggleCommercialStatut(id){
     lsSave();
     gasPush('nfs_commerciaux', c);
     toast('Statut mis à jour','ok');
-    renderCommerciaux();
+    if(currentPage==='collecteurs_menu') renderCollecteursMenu(); else renderCommerciaux();
   });
 }
 
@@ -2880,6 +2961,97 @@ function renderMedia(){
 // ════════════════════════════════════════════════════════════════════
 
 // ── UTILISATEURS (admin uniquement) — création des comptes à rôle ──────
+// ── COLLECTEURS / COMMERCIAUX — menu dédié avec rapport d'activité ──────
+function renderCollecteursMenu(){
+  document.getElementById('content').innerHTML = `
+  <div style="margin-bottom:12px"><button class="btn btn-p" onclick="openCommercial()">+ Nouveau collecteur</button></div>
+  <div class="card"><div style="padding:0;overflow-x:auto">
+    <table>
+      <tr><th>ID</th><th>Nom</th><th>Agence</th><th>Portefeuille</th><th>Versé (30j)</th><th>Opérations (30j)</th><th>Dernière activité</th><th>Solde personnel</th><th>Statut</th><th>Actions</th></tr>
+      ${S.commerciaux.length ? S.commerciaux.map(c=>{
+        const nbClients = S.portefeuilles.filter(p=>p.commercialId===c.id).length;
+        const act = activiteCollecteur(c.id);
+        return `<tr>
+          <td class="fw7 fs11" style="color:var(--blue)">${c.id}</td>
+          <td>${c.nom} ${c.prenom}<br><span class="fs11" style="color:var(--muted)">${c.tel||'—'}</span></td>
+          <td class="fs11">${c.agence||'—'}</td>
+          <td>${nbClients} client(s)</td>
+          <td class="fw7" style="color:var(--green)">${fmt(act.totalVerse30j)}</td>
+          <td>${act.nbOps30j}</td>
+          <td class="fs11">${act.derniereActivite ? new Date(act.derniereActivite).toLocaleDateString('fr-FR') : 'Aucune'}</td>
+          <td class="fw7" style="color:var(--gold)">${fmt(c.soldeCollecte||0)}</td>
+          <td><span class="st st-${c.statut}">${c.statut}</span></td>
+          <td><div style="display:flex;gap:3px;flex-wrap:wrap">
+            <button class="btn btn-p btn-sm" onclick="openPortefeuille('${c.id}')">👥 Portefeuille</button>
+            <button class="btn btn-o btn-sm" onclick="reinitialiserPinCommercial('${c.id}')">🔑 PIN</button>
+            <button class="btn btn-d btn-sm" onclick="toggleCommercialStatut('${c.id}')">${c.statut==='actif'?'Suspendre':'Réactiver'}</button>
+          </div></td>
+        </tr>`;
+      }).join('') : '<tr><td colspan="10" class="empty">Aucun collecteur créé</td></tr>'}
+    </table>
+  </div></div>`;
+}
+
+// ── MENU GÉNÉRIQUE PAR RÔLE — Gestionnaires de compte / Agents de crédit /
+// Responsables d'agence / Responsables régionaux ────────────────────────
+// Le périmètre affiché pour chaque personne (membres, encours, PAR, collecte)
+// reflète l'agence (ou la région pour le responsable régional) qui lui est
+// rattachée — il ne s'agit pas d'un suivi nominatif action par action (le
+// modèle de données ne trace pas encore "qui a traité quoi"), mais du
+// périmètre réel qu'elle supervise, ce qui donne une vraie photo de son
+// activité de gestion.
+const ROLE_MENU_LABELS = {
+  gestionnaire_compte: 'Gestionnaires de compte membres',
+  gestionnaire_credit: 'Agents de crédit',
+  responsable_agence: "Responsables d'agence",
+  responsable_regional: 'Responsables régionaux'
+};
+
+function synthesePersonne(u){
+  if(u.role === 'responsable_regional'){
+    const mesMembres = membresParRegion(u.region);
+    const mesCredits = creditsParRegion(u.region).filter(c=>c.statut==='encours');
+    const encoursEpargne = mesMembres.reduce((s,m)=>s+(parseFloat(m.soldeEP)||0),0);
+    const encoursCredit = mesCredits.reduce((s,c)=>{ const k=calculCredit(c); return s+k.capitalRestant; },0);
+    const nbAgences = S.agences.filter(a=>a.region===u.region).length;
+    return `${nbAgences} agence(s) · ${mesMembres.length} membres · Épargne ${fmt(encoursEpargne)} · Crédit ${fmt(encoursCredit)}`;
+  }
+  const mesMembres = membresParAgence(u.agence);
+  const mesCredits = creditsParAgence(u.agence).filter(c=>c.statut==='encours');
+  const encoursEpargne = mesMembres.reduce((s,m)=>s+(parseFloat(m.soldeEP)||0),0);
+  const encoursCredit = mesCredits.reduce((s,c)=>{ const k=calculCredit(c); return s+k.capitalRestant; },0);
+  if(u.role === 'gestionnaire_credit'){
+    const enRetard = mesCredits.filter(c=>calculCredit(c).enRetard).length;
+    const par = mesCredits.length ? Math.round((enRetard/mesCredits.length)*100) : 0;
+    return `${mesCredits.length} crédits actifs · Encours ${fmt(encoursCredit)} · PAR ${par}%`;
+  }
+  return `${mesMembres.length} membres · Épargne ${fmt(encoursEpargne)} · Crédit ${fmt(encoursCredit)}`;
+}
+
+function renderRoleMenu(role){
+  const liste = S.utilisateurs.filter(u=>u.role===role);
+  document.getElementById('content').innerHTML = `
+  <div style="margin-bottom:12px"><button class="btn btn-p" onclick="ouvrirCreationUtilisateur('${role}')">+ Nouveau (${ROLE_MENU_LABELS[role]})</button></div>
+  <div class="card"><div style="padding:0;overflow-x:auto">
+    <table>
+      <tr><th>ID</th><th>Nom</th><th>${role==='responsable_regional'?'Région':'Agence'}</th><th>Téléphone</th><th>Périmètre / Activité</th><th>Statut</th><th>Actions</th></tr>
+      ${liste.length ? liste.slice().reverse().map(u=>`
+        <tr>
+          <td class="fw7 fs11" style="color:var(--blue)">${u.id}</td>
+          <td>${u.nom} ${u.prenom}</td>
+          <td class="fs11">${role==='responsable_regional' ? (u.region||'—') : (u.agence||'—')}</td>
+          <td class="fs11">${u.tel||'—'}</td>
+          <td class="fs11">${synthesePersonne(u)}</td>
+          <td><span class="st st-${u.statut}">${u.statut}</span></td>
+          <td><div style="display:flex;gap:3px;flex-wrap:wrap">
+            <button class="btn btn-o btn-sm" onclick="reinitialiserPinUtilisateur('${u.id}')">🔑 PIN</button>
+            <button class="btn btn-d btn-sm" onclick="toggleUtilisateurStatut('${u.id}')">${u.statut==='actif'?'Suspendre':'Réactiver'}</button>
+          </div></td>
+        </tr>`).join('') : `<tr><td colspan="7" class="empty">Aucun compte "${ROLE_MENU_LABELS[role]}" créé</td></tr>`}
+    </table>
+  </div></div>`;
+}
+
 function renderUtilisateurs(){
   document.getElementById('content').innerHTML = `
   <div style="margin-bottom:12px"><button class="btn btn-p" onclick="ouvrirCreationUtilisateur()">+ Nouveau compte</button></div>
@@ -2904,10 +3076,10 @@ function renderUtilisateurs(){
   </div></div>`;
 }
 
-function ouvrirCreationUtilisateur(){
+function ouvrirCreationUtilisateur(rolePreRempli){
   const nom = prompt('Nom :'); if(!nom) return;
   const prenom = prompt('Prénom :')||'';
-  const roleChoisi = prompt('Rôle (gestionnaire_compte / gestionnaire_credit / responsable_agence / responsable_regional) :');
+  const roleChoisi = rolePreRempli || prompt('Rôle (gestionnaire_compte / gestionnaire_credit / responsable_agence / responsable_regional) :');
   if(!roleChoisi || !ROLE_LABELS[roleChoisi] || roleChoisi==='admin' || roleChoisi==='collecteur'){
     toast('Rôle invalide','err'); return;
   }
@@ -2923,7 +3095,7 @@ function ouvrirCreationUtilisateur(){
     S.utilisateurs.push(nouvel);
     lsSave();
     alert('Compte créé : '+resp.utilisateur.id+'\n\nPIN provisoire : '+resp.utilisateur.pin+'\n\nÀ communiquer directement — il devra le changer à la première connexion.');
-    renderUtilisateurs();
+    if(rolePreRempli) renderRoleMenu(rolePreRempli); else renderUtilisateurs();
   });
 }
 
@@ -2937,7 +3109,7 @@ function reinitialiserPinUtilisateur(id){
     const resp = await gasPostWithResponse({ action:'upsert', table:'nfs_utilisateurs', row: u });
     if(!resp || !resp.ok){ toast('❌ Échec — vérifiez la connexion','err'); return; }
     alert('Nouveau PIN pour '+u.nom+' '+u.prenom+' :\n\n'+nouveauPin);
-    renderUtilisateurs();
+    renderRoleMenu(u.role);
   });
 }
 
@@ -2948,27 +3120,50 @@ function toggleUtilisateurStatut(id){
   lsSave();
   gasPush('nfs_utilisateurs', u);
   toast('Statut mis à jour','ok');
-  renderUtilisateurs();
+  renderRoleMenu(u.role);
 }
 
-// ── COLLECTEUR (vue web complémentaire à l'app mobile) ─────────────────
+// ── COLLECTEUR (fonctionnalités complètes, équivalentes à l'app mobile) ──
 function renderDashboardCollecteur(){
   const mesMembres = S.portefeuilles.filter(p=>p.commercialId===CURRENT_USER.id).map(p=>getMembre(p.membreId)).filter(Boolean);
   const com = S.commerciaux.find(c=>c.id===CURRENT_USER.id);
+  const collectesJour = S.collectes.filter(c=>c.commercialId===CURRENT_USER.id && (c.dateCollecte||'')===isoDay());
+  const totalVerseJour = collectesJour.filter(c=>c.type==='VERSEMENT').reduce((s,c)=>s+(parseFloat(c.montant)||0),0);
+  const membresVisitesAuj = new Set(collectesJour.map(c=>c.membreId)).size;
+  const auj = new Date();
+  const enRetard = mesMembres.filter(m=>{
+    const j = m.derniereOp ? Math.floor((auj-new Date(m.derniereOp))/86400000) : 999;
+    return j > (typeof INACTIF_JOURS!=='undefined'?INACTIF_JOURS:30);
+  });
+
   document.getElementById('content').innerHTML = `
   <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">
     <div class="card" style="flex:1;min-width:150px"><div class="card-bd" style="text-align:center">
-      <div style="font-size:10px;color:var(--muted)">Membres dans mon portefeuille</div>
-      <div style="font-size:20px;font-weight:800;color:var(--navy)">${mesMembres.length}</div>
+      <div style="font-size:10px;color:var(--muted)">Collecté aujourd'hui</div>
+      <div style="font-size:18px;font-weight:800;color:var(--green)">${fmt(totalVerseJour)}</div>
+    </div></div>
+    <div class="card" style="flex:1;min-width:150px"><div class="card-bd" style="text-align:center">
+      <div style="font-size:10px;color:var(--muted)">Membres visités / portefeuille</div>
+      <div style="font-size:20px;font-weight:800;color:var(--navy)">${membresVisitesAuj} / ${mesMembres.length}</div>
     </div></div>
     <div class="card" style="flex:1;min-width:150px"><div class="card-bd" style="text-align:center">
       <div style="font-size:10px;color:var(--muted)">Mon solde de collecte</div>
-      <div style="font-size:20px;font-weight:800;color:var(--gold)">${fmt(com?.soldeCollecte||0)}</div>
+      <div style="font-size:18px;font-weight:800;color:var(--gold)">${fmt(com?.soldeCollecte||0)}</div>
+    </div></div>
+    <div class="card" style="flex:1;min-width:150px"><div class="card-bd" style="text-align:center">
+      <div style="font-size:10px;color:var(--muted)">Membres en retard</div>
+      <div style="font-size:20px;font-weight:800;color:${enRetard.length?'var(--red)':'var(--green)'}">${enRetard.length}</div>
     </div></div>
   </div>
-  <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:12px;font-size:12px;color:#1D4ED8">
-    ℹ️ L'encaissement des versements se fait depuis l'application mobile Collecteur. Cette vue web vous permet de suivre votre portefeuille et vos demandes.
-  </div>`;
+  <div class="card"><div class="card-hd"><h3>Accès rapides</h3></div><div class="card-bd" style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn btn-p" onclick="nav('encaissement_collecteur')">💰 Encaisser un versement/retrait</button>
+    <button class="btn btn-o" onclick="nav('mon_portefeuille')">👥 Mon portefeuille</button>
+    <button class="btn btn-o" onclick="nav('cloture_collecteur')">🧾 Clôture de caisse</button>
+  </div></div>
+  ${enRetard.length ? `<div class="card" style="margin-top:14px"><div class="card-hd"><h3>⚠️ Membres à relancer (aucune opération depuis plus de ${typeof INACTIF_JOURS!=='undefined'?INACTIF_JOURS:30} jours)</h3></div>
+    <div style="padding:0;overflow-x:auto"><table><tr><th>Membre</th><th>Téléphone</th><th>Dernière opération</th></tr>
+    ${enRetard.map(m=>`<tr><td>${m.nom} ${m.prenom}</td><td class="fs11">${m.tel||'—'}</td><td class="fs11">${m.derniereOp||'—'}</td></tr>`).join('')}
+    </table></div></div>` : ''}`;
 }
 
 function renderMonPortefeuille(){
@@ -2976,12 +3171,233 @@ function renderMonPortefeuille(){
   document.getElementById('content').innerHTML = `
   <div class="card"><div style="padding:0;overflow-x:auto">
     <table>
-      <tr><th>ID</th><th>Nom</th><th>Téléphone</th><th>Solde EP</th><th>Solde CC</th><th>Statut</th></tr>
+      <tr><th>ID</th><th>Nom</th><th>Téléphone</th><th>Solde EP</th><th>Solde CC</th><th>Statut</th><th>Actions</th></tr>
       ${mesMembres.length ? mesMembres.map(m=>`
         <tr><td class="fw7 fs11">${m.id}</td><td>${m.nom} ${m.prenom}</td><td class="fs11">${m.tel||'—'}</td>
         <td class="fw7">${fmt(m.soldeEP||0)}</td><td class="fw7">${fmt(m.soldeCC||0)}</td>
-        <td><span class="st st-${m.statut}">${m.statut}</span></td></tr>`).join('') : '<tr><td colspan="6" class="empty">Aucun membre affecté</td></tr>'}
+        <td><span class="st st-${m.statut}">${m.statut}</span></td>
+        <td><div style="display:flex;gap:3px;flex-wrap:wrap">
+          ${m.tel?`<a class="btn btn-o btn-sm" href="tel:${m.tel}" style="text-decoration:none">📞 Appeler</a>`:''}
+          <button class="btn btn-p btn-sm" onclick="allerEncaisser('${m.id}')">💰 Encaisser</button>
+        </div></td>
+        </tr>`).join('') : '<tr><td colspan="7" class="empty">Aucun membre affecté</td></tr>'}
     </table>
+  </div></div>`;
+}
+
+function allerEncaisser(membreId){
+  nav('encaissement_collecteur');
+  setTimeout(()=>{ const sel=document.getElementById('encMembreSelect'); if(sel){ sel.value=membreId; majApercuEncaissement(); } }, 30);
+}
+
+// ── ENCAISSEMENT D'UN VERSEMENT / RETRAIT (fonction centrale) ───────────
+function renderEncaissementCollecteur(){
+  const mesMembres = S.portefeuilles.filter(p=>p.commercialId===CURRENT_USER.id).map(p=>getMembre(p.membreId)).filter(Boolean);
+  document.getElementById('content').innerHTML = `
+  <div class="card" style="max-width:520px"><div class="card-bd">
+    <div class="fg"><label>Membre *</label>
+      <select class="fi" id="encMembreSelect" onchange="majApercuEncaissement()">
+        <option value="">— Sélectionner un membre —</option>
+        ${mesMembres.map(m=>`<option value="${m.id}">${m.nom} ${m.prenom} — ${m.id}</option>`).join('')}
+      </select>
+    </div>
+    <div id="encSoldeInfo" style="font-size:11px;color:var(--muted);margin:-8px 0 12px"></div>
+    <div class="fg"><label>Type d'opération *</label>
+      <select class="fi" id="encType" onchange="majApercuEncaissement()">
+        <option value="VERSEMENT">Versement (dépôt collecté)</option>
+        <option value="RETRAIT">Retrait (décaissement)</option>
+      </select>
+    </div>
+    <div class="fg"><label>Montant (FCFA) *</label><input class="fi" id="encMontant" type="number" min="1" oninput="majApercuEncaissement()"></div>
+    <div class="fg"><label>Mode de paiement *</label>
+      <select class="fi" id="encMode">
+        <option value="CASH">Espèces</option>
+        <option value="ORANGE_MONEY">Orange Money</option>
+        <option value="MTN_MOMO">MTN MoMo</option>
+      </select>
+    </div>
+    <div class="fg"><label>Code de confirmation client *</label><input class="fi" id="encConfirmation" placeholder="Code ou signature du client"></div>
+    <div id="encApercu" style="display:none;background:#F0FDF4;border:1px solid #86EFAC;border-radius:8px;padding:10px;font-size:12px;margin-bottom:12px"></div>
+    <button class="btn btn-p" style="width:100%;padding:12px" onclick="confirmerEncaissementWeb()">Valider l'opération</button>
+  </div></div>
+  <div id="encRecu" style="max-width:520px;margin-top:14px"></div>`;
+}
+
+function majApercuEncaissement(){
+  const membreId = document.getElementById('encMembreSelect').value;
+  const type = document.getElementById('encType').value;
+  const montant = parseFloat(document.getElementById('encMontant').value) || 0;
+  const infoEl = document.getElementById('encSoldeInfo');
+  const apercuEl = document.getElementById('encApercu');
+  const m = getMembre(membreId);
+
+  if(!m){ infoEl.textContent=''; apercuEl.style.display='none'; return; }
+  const solde = parseFloat(m.soldeEP)||0;
+  infoEl.textContent = 'Solde Épargne actuel : '+fmt(solde);
+
+  if(!montant){ apercuEl.style.display='none'; return; }
+  const soldeApres = type==='VERSEMENT' ? solde+montant : solde-montant;
+  apercuEl.style.display = 'block';
+  let alerte = '';
+  if(type==='RETRAIT' && soldeApres < SOLDE_MIN_EPARGNE){
+    alerte = `<div style="color:var(--red);font-weight:700;margin-top:4px">⚠️ Refusé : le solde Épargne minimum de ${fmt(SOLDE_MIN_EPARGNE)} doit être conservé — retrait maximum : ${fmt(Math.max(0,solde-SOLDE_MIN_EPARGNE))}</div>`;
+  }
+  apercuEl.innerHTML = `Solde après opération : <b>${fmt(soldeApres)}</b>${alerte}`;
+}
+
+async function confirmerEncaissementWeb(){
+  const membreId = document.getElementById('encMembreSelect').value;
+  const type = document.getElementById('encType').value;
+  const montant = parseFloat(document.getElementById('encMontant').value);
+  const mode = document.getElementById('encMode').value;
+  const confirmation = document.getElementById('encConfirmation').value.trim();
+  const m = getMembre(membreId);
+
+  if(!m) return toast('Sélectionnez un membre','err');
+  if(!montant || montant<=0) return toast('Montant invalide','err');
+  if(!confirmation) return toast('Code de confirmation client requis','err');
+
+  const solde = parseFloat(m.soldeEP)||0;
+  if(type==='RETRAIT' && montant>solde) return toast('Solde insuffisant','err');
+  if(type==='RETRAIT' && (solde-montant) < SOLDE_MIN_EPARGNE){
+    return toast('❌ Un minimum de '+fmt(SOLDE_MIN_EPARGNE)+' doit rester sur le compte Épargne','err');
+  }
+
+  requireAdminPin('Confirmer cette opération', async ()=>{
+    const uuid = uuidv4ForAdhesion();
+    const soldeApres = type==='VERSEMENT' ? solde+montant : solde-montant;
+    const collecte = {
+      uuid, commercialId: CURRENT_USER.id, membreId, type, montant, modePaiement: mode,
+      soldeApres, signatureClient: confirmation, dateCollecte: isoDay(), heureCollecte: new Date().toTimeString().slice(0,5),
+      statut: 'attente_sync'
+    };
+    toast('Enregistrement en cours...');
+    const resp = await gasPostWithResponse({ action:'upsertCollecte', collecte });
+    if(!resp || !resp.ok){ toast('❌ Échec — vérifiez la connexion et réessayez','err'); return; }
+    collecte.statut = 'synced';
+    S.collectes.push(collecte);
+    lsSave();
+    // Le solde réel du membre a été mis à jour côté serveur (upsertCollecteDedupe) —
+    // on rafraîchit depuis le serveur pour l'avoir à jour localement aussi.
+    await gasPull('nfs_membres','nfs_membres');
+
+    const ref = uuid.slice(0,8).toUpperCase();
+    document.getElementById('encRecu').innerHTML = `
+      <div class="card"><div class="card-bd">
+        <div style="text-align:center;font-weight:700;color:var(--navy);margin-bottom:4px">NFS CAMEROON</div>
+        <div style="text-align:center;font-size:11px;color:var(--muted);margin-bottom:10px">Reçu de collecte terrain</div>
+        <hr>
+        <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px"><span>Référence</span><b>${ref}</b></div>
+        <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px"><span>Client</span><b>${m.nom} ${m.prenom} (${m.id})</b></div>
+        <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px"><span>Opération</span><b>${type==='VERSEMENT'?'Versement':'Retrait'}</b></div>
+        <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px"><span>Montant</span><b>${fmt(montant)}</b></div>
+        <div style="display:flex;justify-content:space-between;padding:4px 0;font-size:12px"><span>Solde après</span><b>${fmt(soldeApres)}</b></div>
+        <hr>
+        <div style="text-align:center;font-size:11px;color:var(--green);font-weight:700;margin-top:6px">✅ Opération enregistrée et synchronisée</div>
+      </div></div>`;
+    toast('✅ Opération validée','ok');
+    document.getElementById('encMontant').value=''; document.getElementById('encConfirmation').value='';
+    document.getElementById('encApercu').style.display='none';
+  });
+}
+
+// ── CLÔTURE DE CAISSE / REMISE ───────────────────────────────────────────
+function renderClotureCollecteur(){
+  const collectesJour = S.collectes.filter(c=>c.commercialId===CURRENT_USER.id && (c.dateCollecte||'')===isoDay());
+  const versements = collectesJour.filter(c=>c.type==='VERSEMENT');
+  const retraits = collectesJour.filter(c=>c.type==='RETRAIT');
+  const totalVerse = versements.reduce((s,c)=>s+(parseFloat(c.montant)||0),0);
+  const totalRetire = retraits.reduce((s,c)=>s+(parseFloat(c.montant)||0),0);
+  const especes = collectesJour.filter(c=>c.modePaiement==='CASH');
+  const totalEspeces = especes.filter(c=>c.type==='VERSEMENT').reduce((s,c)=>s+(parseFloat(c.montant)||0),0)
+                     - especes.filter(c=>c.type==='RETRAIT').reduce((s,c)=>s+(parseFloat(c.montant)||0),0);
+  const com = S.commerciaux.find(c=>c.id===CURRENT_USER.id);
+  const plafond = com?.plafondCaisse || 200000;
+  const depassePlafond = totalEspeces > plafond;
+  const historique = S.clotures.filter(c=>c.commercialId===CURRENT_USER.id).slice().reverse().slice(0,10);
+
+  document.getElementById('content').innerHTML = `
+  <div class="card" style="max-width:520px"><div class="card-bd">
+    <div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:12px">Récapitulatif du jour — ${new Date().toLocaleDateString('fr-FR')}</div>
+    <div style="display:flex;justify-content:space-between;padding:6px 0"><span style="font-size:12px;color:var(--muted)">Versements (${versements.length})</span><span class="fw7" style="color:var(--green)">${fmt(totalVerse)}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:6px 0"><span style="font-size:12px;color:var(--muted)">Retraits (${retraits.length})</span><span class="fw7" style="color:var(--red)">${fmt(totalRetire)}</span></div>
+    <div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--border);margin-top:6px"><span style="font-size:12px;font-weight:700">Net en espèces à remettre</span><span class="fw7" style="color:var(--navy)">${fmt(totalEspeces)}</span></div>
+  </div></div>
+  ${depassePlafond ? `<div class="card" style="max-width:520px;margin-top:12px;border-color:#FCA5A5"><div class="card-bd" style="background:#FEF2F2">
+    <div style="font-size:12px;color:var(--red);font-weight:700">⚠️ Plafond de caisse dépassé</div>
+    <div style="font-size:11px;color:var(--red);margin-top:3px">Plafond autorisé : ${fmt(plafond)} — remise à l'agence recommandée avant de poursuivre la collecte.</div>
+  </div></div>` : ''}
+  <div class="card" style="max-width:520px;margin-top:12px"><div class="card-bd">
+    <div class="fg"><label>Montant réellement remis (FCFA) *</label><input class="fi" id="clotureMontantRemis" type="number" value="${totalEspeces}"></div>
+    <div class="fg"><label>Observations (écarts éventuels)</label><input class="fi" id="clotureObs" placeholder="Optionnel"></div>
+    <button class="btn btn-p" style="width:100%;padding:12px" onclick="confirmerClotureWeb(${totalEspeces}, ${collectesJour.length})">Confirmer la clôture</button>
+  </div></div>
+  <div class="card" style="max-width:520px;margin-top:14px"><div class="card-hd"><h3>Historique de mes clôtures</h3></div>
+    <div style="padding:0;overflow-x:auto"><table>
+      <tr><th>Date</th><th>Collecté</th><th>Remis</th><th>Écart</th></tr>
+      ${historique.length ? historique.map(c=>`<tr><td class="fs11">${c.date}</td><td class="fw7">${fmt(c.totalCollecte)}</td><td class="fw7">${fmt(c.montantRemis)}</td>
+        <td class="fw7" style="color:${Math.abs(c.ecart)>0?'var(--red)':'var(--green)'}">${fmt(c.ecart)}</td></tr>`).join('') : '<tr><td colspan="4" class="empty">Aucune clôture enregistrée</td></tr>'}
+    </table></div>
+  </div>`;
+}
+
+async function confirmerClotureWeb(totalEspeces, nbOperations){
+  const montantRemis = parseFloat(document.getElementById('clotureMontantRemis').value);
+  const obs = document.getElementById('clotureObs').value.trim();
+  if(isNaN(montantRemis)) return toast('Montant remis requis','err');
+  const ecart = montantRemis - totalEspeces;
+
+  requireAdminPin('Confirmer la clôture de caisse', async ()=>{
+    const cloture = {
+      id: CURRENT_USER.id+'-'+isoDay(), commercialId: CURRENT_USER.id, date: isoDay(),
+      totalCollecte: totalEspeces, montantRemis, ecart, observations: obs, nbOperations,
+      timestamp: new Date().toISOString()
+    };
+    const resp = await gasPostWithResponse({ action:'upsert', table:'nfs_clotures', row: cloture });
+    if(!resp || !resp.ok){ toast('❌ Échec — vérifiez la connexion','err'); return; }
+    const idx = S.clotures.findIndex(c=>c.id===cloture.id);
+    if(idx>=0) S.clotures[idx]=cloture; else S.clotures.push(cloture);
+    lsSave();
+    toast(Math.abs(ecart)>0 ? '⚠️ Clôture enregistrée avec un écart de '+fmt(Math.abs(ecart)) : '✅ Caisse clôturée — rapprochement exact', Math.abs(ecart)>0?'err':'ok');
+    renderClotureCollecteur();
+  });
+}
+
+// ── MES PERFORMANCES / COMMISSIONS ───────────────────────────────────────
+function renderMesPerformances(){
+  const mesCollectes = S.collectes.filter(c=>c.commercialId===CURRENT_USER.id);
+  const auj = new Date();
+  const debutSemaine = new Date(auj); debutSemaine.setDate(auj.getDate()-7);
+  const debutMois = new Date(auj); debutMois.setDate(1);
+
+  const filtrerPeriode = (depuis) => mesCollectes.filter(c=>{ const d=new Date(c.dateCollecte); return !isNaN(d) && d>=depuis && c.type==='VERSEMENT'; });
+  const totalJour = filtrerPeriode(new Date(isoDay())).reduce((s,c)=>s+(parseFloat(c.montant)||0),0);
+  const totalSemaine = filtrerPeriode(debutSemaine).reduce((s,c)=>s+(parseFloat(c.montant)||0),0);
+  const totalMois = filtrerPeriode(debutMois).reduce((s,c)=>s+(parseFloat(c.montant)||0),0);
+
+  const mesMembres = S.portefeuilles.filter(p=>p.commercialId===CURRENT_USER.id).map(p=>getMembre(p.membreId)).filter(Boolean);
+  const enRetard = mesMembres.filter(m=>{
+    const j = m.derniereOp ? Math.floor((auj-new Date(m.derniereOp))/86400000) : 999;
+    return j > (typeof INACTIF_JOURS!=='undefined'?INACTIF_JOURS:30);
+  }).length;
+  const tauxRegularite = mesMembres.length ? Math.round(((mesMembres.length-enRetard)/mesMembres.length)*100) : 0;
+
+  // Estimation indicative de commission (taux configurable ci-dessous) — à titre
+  // d'estimation uniquement, ne remplace pas un calcul de paie officiel.
+  const TAUX_COMMISSION_INDICATIF = 0.01;
+  const commissionEstimee = totalMois * TAUX_COMMISSION_INDICATIF;
+
+  document.getElementById('content').innerHTML = `
+  <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+    <div class="card" style="flex:1;min-width:140px"><div class="card-bd" style="text-align:center"><div style="font-size:10px;color:var(--muted)">Collecté aujourd'hui</div><div style="font-size:16px;font-weight:800;color:var(--navy)">${fmt(totalJour)}</div></div></div>
+    <div class="card" style="flex:1;min-width:140px"><div class="card-bd" style="text-align:center"><div style="font-size:10px;color:var(--muted)">Collecté cette semaine</div><div style="font-size:16px;font-weight:800;color:var(--blue)">${fmt(totalSemaine)}</div></div></div>
+    <div class="card" style="flex:1;min-width:140px"><div class="card-bd" style="text-align:center"><div style="font-size:10px;color:var(--muted)">Collecté ce mois</div><div style="font-size:16px;font-weight:800;color:var(--green)">${fmt(totalMois)}</div></div></div>
+    <div class="card" style="flex:1;min-width:140px"><div class="card-bd" style="text-align:center"><div style="font-size:10px;color:var(--muted)">Taux de régularité portefeuille</div><div style="font-size:18px;font-weight:800;color:${tauxRegularite>80?'var(--green)':'var(--red)'}">${tauxRegularite}%</div></div></div>
+  </div>
+  <div class="card"><div class="card-bd">
+    <div style="font-size:12px;color:var(--muted)">Estimation indicative de commission (${(TAUX_COMMISSION_INDICATIF*100).toFixed(0)}% du collecté ce mois)</div>
+    <div style="font-size:20px;font-weight:800;color:var(--gold);margin-top:4px">${fmt(commissionEstimee)}</div>
+    <div style="font-size:10px;color:var(--muted);margin-top:6px">⚠️ Estimation indicative — le calcul officiel de commission peut différer selon la politique de l'institution.</div>
   </div></div>`;
 }
 
