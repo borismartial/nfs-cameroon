@@ -2577,7 +2577,7 @@ function reinitialiserPinCommercial(id){
   const com = S.commerciaux.find(c=>c.id===id);
   if(!com) return;
   requireAdminPin('Réinitialiser le PIN de '+com.nom+' '+com.prenom+' (PIN admin requis)', async ()=>{
-    const nouveauPin = String(Math.floor(1000 + Math.random()*9000));
+    const nouveauPin = '1234'; // PIN par défaut, identique pour tous les rôles
     com.pin = nouveauPin;
     com.pinAChanger = true; // il devra en redéfinir un personnel à sa prochaine connexion
     lsSave();
@@ -2931,7 +2931,7 @@ function reinitialiserPinUtilisateur(id){
   const u = S.utilisateurs.find(x=>x.id===id);
   if(!u) return;
   requireAdminPin('Réinitialiser le PIN de '+u.nom+' '+u.prenom+' (PIN admin requis)', async ()=>{
-    const nouveauPin = String(Math.floor(1000 + Math.random()*9000));
+    const nouveauPin = '1234'; // PIN par défaut, identique pour tous les rôles
     u.pin = nouveauPin; u.pinAChanger = true;
     lsSave();
     const resp = await gasPostWithResponse({ action:'upsert', table:'nfs_utilisateurs', row: u });
