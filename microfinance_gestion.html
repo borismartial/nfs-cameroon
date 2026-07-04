@@ -465,9 +465,20 @@ tr:hover td{background:#F8FAFC;}
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyPYGW2r0HJL3ao_c7hKT553YyTFFa3pGD-vTKdkWulL4dX-lkyuUgaPtE7_FmOzzs/exec";
 
 // GET via JSONP (contourne CORS)
+// Compteur incrémental pour garantir un nom de callback JSONP unique, même
+// quand plusieurs appels gasGet() partent EXACTEMENT à la même milliseconde
+// (ce qui arrive systématiquement avec pullAll(), qui lance ~11 appels en
+// parallèle via Promise.all). Sans ce compteur, Date.now() seul pouvait
+// produire le même nom pour deux appels différents : le second écrasait le
+// callback du premier dans window[cbName], si bien que la réponse d'une table
+// (ex: nfs_commerciaux) pouvait résoudre la promesse d'une AUTRE table
+// (ex: nfs_membres), ou rester bloquée jusqu'au timeout — ce qui expliquait
+// des listes qui "disparaissaient" ou se remplissaient de mauvaises données
+// de façon intermittente.
+let _gasGetCallbackCounter = 0;
 function gasGet(table) {
   return new Promise((resolve) => {
-    const cbName = 'cb_' + Date.now();
+    const cbName = 'cb_' + Date.now() + '_' + (_gasGetCallbackCounter++) + '_' + Math.random().toString(36).slice(2,8);
     const script = document.createElement('script');
     const timer  = setTimeout(() => {
       delete window[cbName];
@@ -3187,21 +3198,29 @@ function renderMonPortefeuille(){
 
 function allerEncaisser(membreId){
   nav('encaissement_collecteur');
-  setTimeout(()=>{ const sel=document.getElementById('encMembreSelect'); if(sel){ sel.value=membreId; majApercuEncaissement(); } }, 30);
+  setTimeout(()=>{
+    const inp=document.getElementById('encMembreInput');
+    const m=getMembre(membreId);
+    if(inp && m){ inp.value=m.id+' — '+m.nom+' '+m.prenom; _encMembreSelectionne=m; majApercuEncaissement(); }
+  }, 30);
 }
 
 // ── ENCAISSEMENT D'UN VERSEMENT / RETRAIT (fonction centrale) ───────────
+let _encMembreSelectionne = null;
+
 function renderEncaissementCollecteur(){
   const mesMembres = S.portefeuilles.filter(p=>p.commercialId===CURRENT_USER.id).map(p=>getMembre(p.membreId)).filter(Boolean);
+  _encMembreSelectionne = null;
   document.getElementById('content').innerHTML = `
-  <div class="card" style="max-width:520px"><div class="card-bd">
-    <div class="fg"><label>Membre *</label>
-      <select class="fi" id="encMembreSelect" onchange="majApercuEncaissement()">
-        <option value="">— Sélectionner un membre —</option>
-        ${mesMembres.map(m=>`<option value="${m.id}">${m.nom} ${m.prenom} — ${m.id}</option>`).join('')}
-      </select>
+  <div class="card" style="max-width:520px;overflow:visible"><div class="card-bd" style="overflow:visible">
+    <div class="fg" style="position:relative">
+      <label>Membre *</label>
+      <input class="fi" id="encMembreInput" placeholder="Tapez le matricule, le nom, ou cliquez pour voir la liste..." autocomplete="off"
+        oninput="filtrerListeMembresEnc()" onfocus="filtrerListeMembresEnc()" onblur="setTimeout(()=>fermerListeMembresEnc(), 200)">
+      <div id="encMembreDropdown" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--border);border-top:none;border-radius:0 0 8px 8px;max-height:220px;overflow-y:auto;z-index:50;box-shadow:0 4px 10px rgba(0,0,0,.08)"></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:3px">Cliquez dans le champ pour voir la liste, ou tapez le matricule/nom directement.</div>
     </div>
-    <div id="encSoldeInfo" style="font-size:11px;color:var(--muted);margin:-8px 0 12px"></div>
+    <div id="encSoldeInfo" style="font-size:11px;color:var(--muted);margin:6px 0 12px"></div>
     <div class="fg"><label>Type d'opération *</label>
       <select class="fi" id="encType" onchange="majApercuEncaissement()">
         <option value="VERSEMENT">Versement (dépôt collecté)</option>
@@ -3223,17 +3242,79 @@ function renderEncaissementCollecteur(){
   <div id="encRecu" style="max-width:520px;margin-top:14px"></div>`;
 }
 
+// Affiche/filtre la liste déroulante personnalisée des membres du portefeuille,
+// en fonction de ce qui est déjà tapé (matricule ou nom). S'affiche dès le clic
+// dans le champ (même vide), contrairement au <datalist> natif qui ne se
+// déclenche pas de façon fiable sur tous les navigateurs.
+function filtrerListeMembresEnc(){
+  const saisie = (document.getElementById('encMembreInput').value||'').trim().toLowerCase();
+  const mesMembres = S.portefeuilles.filter(p=>p.commercialId===CURRENT_USER.id).map(p=>getMembre(p.membreId)).filter(Boolean);
+  const filtres = saisie ? mesMembres.filter(m=>(m.id+' '+m.nom+' '+m.prenom).toLowerCase().includes(saisie)) : mesMembres;
+  const dropdown = document.getElementById('encMembreDropdown');
+
+  if(!filtres.length){
+    dropdown.innerHTML = '<div style="padding:10px;font-size:12px;color:var(--muted)">Aucun membre trouvé</div>';
+    dropdown.style.display = 'block';
+    return;
+  }
+  dropdown.innerHTML = filtres.map(m=>`
+    <div style="padding:9px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid #F1F5F9" onmouseover="this.style.background='#F8FAFC'" onmouseout="this.style.background='#fff'" onclick="choisirMembreEnc('${m.id}')">
+      <b>${m.nom} ${m.prenom}</b> <span style="color:var(--blue)">— ${m.id}</span>
+    </div>`).join('');
+  dropdown.style.display = 'block';
+}
+
+function choisirMembreEnc(membreId){
+  const m = getMembre(membreId);
+  if(!m) return;
+  _encMembreSelectionne = m;
+  document.getElementById('encMembreInput').value = m.id+' — '+m.nom+' '+m.prenom;
+  document.getElementById('encMembreDropdown').style.display = 'none';
+  majApercuEncaissement();
+}
+
+function fermerListeMembresEnc(){
+  const dropdown = document.getElementById('encMembreDropdown');
+  if(dropdown) dropdown.style.display = 'none';
+}
+
+
+
+// Résout le membre à partir du champ texte "encMembreInput" — accepte soit un
+// matricule saisi directement (ex: "MBR-0000012"), soit une valeur choisie
+// dans la liste déroulante (format "MBR-0000012 — Nom Prénom"), soit une
+// recherche partielle par nom si aucun matricule exact n'est reconnu.
+function resoudreMembreEncaissement(){
+  const saisie = (document.getElementById('encMembreInput').value||'').trim();
+  if(!saisie) return null;
+  // Si le membre a été choisi en cliquant dans la liste déroulante, et que le
+  // texte du champ correspond toujours à ce choix, on fait confiance à cette
+  // sélection précise plutôt que de re-parser le texte.
+  if(_encMembreSelectionne && saisie.startsWith(_encMembreSelectionne.id)) return _encMembreSelectionne;
+
+  const mesMembres = S.portefeuilles.filter(p=>p.commercialId===CURRENT_USER.id).map(p=>getMembre(p.membreId)).filter(Boolean);
+  // 1) Correspondance exacte sur le matricule (ce que l'utilisateur tape le plus souvent)
+  let m = mesMembres.find(x=>x.id.toLowerCase()===saisie.toLowerCase());
+  if(m) return m;
+  // 2) Valeur issue de la liste déroulante : "MBR-0000012 — Nom Prénom"
+  const idExtrait = saisie.split('—')[0].trim();
+  m = mesMembres.find(x=>x.id.toLowerCase()===idExtrait.toLowerCase());
+  if(m) return m;
+  // 3) Recherche partielle par nom/prénom/matricule
+  const s = saisie.toLowerCase();
+  return mesMembres.find(x=>(x.nom+' '+x.prenom+' '+x.id).toLowerCase().includes(s)) || null;
+}
+
 function majApercuEncaissement(){
-  const membreId = document.getElementById('encMembreSelect').value;
   const type = document.getElementById('encType').value;
   const montant = parseFloat(document.getElementById('encMontant').value) || 0;
   const infoEl = document.getElementById('encSoldeInfo');
   const apercuEl = document.getElementById('encApercu');
-  const m = getMembre(membreId);
+  const m = resoudreMembreEncaissement();
 
   if(!m){ infoEl.textContent=''; apercuEl.style.display='none'; return; }
   const solde = parseFloat(m.soldeEP)||0;
-  infoEl.textContent = 'Solde Épargne actuel : '+fmt(solde);
+  infoEl.innerHTML = 'Membre trouvé : <b>'+m.nom+' '+m.prenom+' ('+m.id+')</b> — Solde Épargne actuel : '+fmt(solde);
 
   if(!montant){ apercuEl.style.display='none'; return; }
   const soldeApres = type==='VERSEMENT' ? solde+montant : solde-montant;
@@ -3246,14 +3327,14 @@ function majApercuEncaissement(){
 }
 
 async function confirmerEncaissementWeb(){
-  const membreId = document.getElementById('encMembreSelect').value;
   const type = document.getElementById('encType').value;
   const montant = parseFloat(document.getElementById('encMontant').value);
   const mode = document.getElementById('encMode').value;
   const confirmation = document.getElementById('encConfirmation').value.trim();
-  const m = getMembre(membreId);
+  const m = resoudreMembreEncaissement();
 
-  if(!m) return toast('Sélectionnez un membre','err');
+  if(!m) return toast('Membre introuvable — vérifiez le matricule ou le nom saisi','err');
+  const membreId = m.id;
   if(!montant || montant<=0) return toast('Montant invalide','err');
   if(!confirmation) return toast('Code de confirmation client requis','err');
 
@@ -3296,8 +3377,11 @@ async function confirmerEncaissementWeb(){
         <div style="text-align:center;font-size:11px;color:var(--green);font-weight:700;margin-top:6px">✅ Opération enregistrée et synchronisée</div>
       </div></div>`;
     toast('✅ Opération validée','ok');
+    document.getElementById('encMembreInput').value='';
+    _encMembreSelectionne = null;
     document.getElementById('encMontant').value=''; document.getElementById('encConfirmation').value='';
     document.getElementById('encApercu').style.display='none';
+    document.getElementById('encSoldeInfo').textContent='';
   });
 }
 

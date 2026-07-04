@@ -1143,9 +1143,14 @@ const SOLDE_MIN_EPARGNE = 5000;
 const GAS_URL = "https://script.google.com/macros/s/AKfycbyPYGW2r0HJL3ao_c7hKT553YyTFFa3pGD-vTKdkWulL4dX-lkyuUgaPtE7_FmOzzs/exec";
 
 // GET via JSONP (contourne CORS)
+// Compteur incrémental pour garantir un nom de callback JSONP unique même
+// pour des appels gasGet() lancés à la même milliseconde (cf. Promise.all
+// dans le cycle de synchronisation) — évite qu'une réponse résolve la
+// mauvaise promesse et fasse disparaître ou mélanger des données.
+let _gasGetCallbackCounter = 0;
 function gasGet(table) {
   return new Promise((resolve) => {
-    const cbName = 'cb_' + Date.now();
+    const cbName = 'cb_' + Date.now() + '_' + (_gasGetCallbackCounter++) + '_' + Math.random().toString(36).slice(2,8);
     const script = document.createElement('script');
     const timer  = setTimeout(() => {
       delete window[cbName];
