@@ -201,22 +201,67 @@ tr:hover td{background:#F8FAFC;}
 </style>
 </head>
 <body>
+<!-- ═══ ÉCRAN DE CONNEXION MULTI-RÔLES ═══ -->
+<div id="loginGateScreen" style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#F1F5F9;padding:20px">
+  <div style="width:100%;max-width:380px;background:#fff;border-radius:16px;padding:28px;box-shadow:0 4px 24px rgba(0,0,0,.08)">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:20px;font-weight:800;color:var(--navy)">NFS CAMEROON</div>
+      <div style="font-size:12px;color:var(--muted)">Logiciel de gestion — Connexion</div>
+    </div>
+
+    <div id="loginRoleStep">
+      <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:10px">Sélectionnez votre rôle</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-o" style="text-align:left;padding:12px" onclick="choisirRoleLogin('admin')">🛡️ Administrateur</button>
+        <button class="btn btn-o" style="text-align:left;padding:12px" onclick="choisirRoleLogin('collecteur')">🚶 Collecteur / Commercial</button>
+        <button class="btn btn-o" style="text-align:left;padding:12px" onclick="choisirRoleLogin('gestionnaire_compte')">👥 Gestionnaire de compte membres</button>
+        <button class="btn btn-o" style="text-align:left;padding:12px" onclick="choisirRoleLogin('gestionnaire_credit')">💳 Gestionnaire de crédit</button>
+        <button class="btn btn-o" style="text-align:left;padding:12px" onclick="choisirRoleLogin('responsable_agence')">🏢 Responsable d'agence</button>
+        <button class="btn btn-o" style="text-align:left;padding:12px" onclick="choisirRoleLogin('responsable_regional')">🗺️ Responsable régional</button>
+      </div>
+    </div>
+
+    <div id="loginCredStep" style="display:none">
+      <div style="font-size:12px;font-weight:700;color:var(--navy);margin-bottom:10px" id="loginRoleLabel"></div>
+      <div class="form-group"><label class="form-label">Identifiant</label><input class="fi" id="loginIdInput" placeholder="Ex: GCM-00001 (ou 'admin')" style="width:100%"></div>
+      <div class="form-group"><label class="form-label">PIN</label><input class="fi" id="loginPinInput" type="password" maxlength="6" placeholder="••••" style="width:100%" onkeydown="if(event.key==='Enter')validerLoginGate()"></div>
+      <div id="loginGateErr" style="color:var(--red);font-size:11px;margin-bottom:8px;display:none"></div>
+      <button class="btn btn-p" style="width:100%;padding:12px;margin-bottom:8px" onclick="validerLoginGate()">Se connecter</button>
+      <button class="btn btn-o" style="width:100%;padding:10px;font-size:12px" onclick="document.getElementById('loginRoleStep').style.display='block';document.getElementById('loginCredStep').style.display='none'">← Changer de rôle</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ CHANGEMENT DE PIN OBLIGATOIRE (première connexion — rôles non-admin) ═══ -->
+<div id="forceRolePinModal" class="modal-ov">
+  <div class="modal" style="width:320px">
+    <h3>🔐 Changez votre PIN</h3>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px">Première connexion : définissez un nouveau PIN personnel.</p>
+    <div class="form-group"><label class="form-label">Nouveau PIN</label><input class="fi" id="roleForcePinNouv" type="password" maxlength="6" style="width:100%"></div>
+    <div class="form-group"><label class="form-label">Confirmer</label><input class="fi" id="roleForcePinConf" type="password" maxlength="6" style="width:100%"></div>
+    <div id="roleForcePinErr" style="color:var(--red);font-size:11px;margin-bottom:8px;display:none"></div>
+    <button class="btn btn-p" style="width:100%;padding:12px" onclick="validerForceRolePinChange()">Définir mon PIN</button>
+  </div>
+</div>
+
+<div id="appRoot" style="display:none">
 <nav id="sidebar">
   <div class="logo-box" style="padding:8px 6px;background:#fff"><img src="data:image/png;base64,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" style="width:100%;height:auto;display:block"></div>
   <div class="nav-sec">Principal</div>
+  <div id="navItemsContainer">
   <div class="nav-item active" onclick="nav('dashboard')"><span>📊</span>Tableau de bord</div>
   <div class="nav-item" onclick="nav('membres')"><span>👥</span>Membres</div>
-  <div class="nav-sec">Opérations</div>
   <div class="nav-item" onclick="nav('depots')" id="nav-depots"><span>📥</span>Dépôts / Retraits<span class="nav-badge" id="badge-depots" style="display:none">0</span></div>
   <div class="nav-item" onclick="nav('virements')"><span>↔️</span>Virements</div>
   <div class="nav-item" onclick="nav('credits')"><span>💳</span>Crédits</div>
   <div class="nav-item" onclick="nav('cep')"><span>🎯</span>Épargne Projet</div>
-  <div class="nav-sec">Administration</div>
   <div class="nav-item" onclick="nav('demandes')" id="nav-demandes"><span>✍️</span>Demandes adhésion<span class="nav-badge" id="badge-demandes" style="display:none">0</span></div>
   <div class="nav-item" onclick="nav('media')"><span>📸</span>Pièces jointes</div>
   <div class="nav-item" onclick="nav('agences')"><span>🏢</span>Agences</div>
   <div class="nav-item" onclick="nav('commerciaux')"><span>🚶</span>Commerciaux</div>
+  <div class="nav-item" onclick="nav('utilisateurs')"><span>🔑</span>Utilisateurs</div>
   <div class="nav-item" onclick="nav('rapports')"><span>📈</span>Rapports</div>
+  </div>
   <div class="sidebar-footer">
     <div><span class="sync-dot" id="syncDot"></span><span id="syncLabel">Hors ligne</span></div>
     <div id="syncTime" style="margin-top:2px"></div>
@@ -237,10 +282,12 @@ tr:hover td{background:#F8FAFC;}
     <div style="display:flex;align-items:center;gap:10px">
       <span id="topDate" style="font-size:11px;color:var(--muted)"></span>
       <button class="btn btn-p btn-sm" onclick="forcSync()">🔄 Sync</button>
-      <span class="badge">ADMIN</span>
+      <span class="badge" id="topRoleBadge">ADMIN</span>
+      <button class="btn btn-o btn-sm" onclick="deconnecterUtilisateur()">Déconnexion</button>
     </div>
   </div>
   <div id="content"></div>
+</div>
 </div>
 
 <div id="toast"></div>
@@ -542,7 +589,192 @@ function compressImage(dataUrl, maxWidth, quality) {
 
 
 // ── STATE ────────────────────────────────────────────────────
-const S={membres:[],transactions:[],credits:[],cep:[],agences:[],demandes:[],commerciaux:[],portefeuilles:[],creditsCollecteurs:[],currentOp:null,editId:null,pendingAction:null};
+// PIN administrateur par défaut (utilisé tant qu'aucun PIN personnalisé n'a été
+// enregistré dans localStorage sous la clé 'nfs_admin_pin'). Ce const manquait
+// jusqu'ici — sa référence sans définition aurait provoqué une erreur silencieuse
+// pour tout admin n'ayant jamais changé son PIN.
+const ADMIN_PIN = '1234';
+const S={membres:[],transactions:[],credits:[],cep:[],agences:[],demandes:[],commerciaux:[],portefeuilles:[],creditsCollecteurs:[],utilisateurs:[],currentOp:null,editId:null,pendingAction:null};
+
+// ── SYSTÈME MULTI-RÔLES ──────────────────────────────────────────────
+// CURRENT_USER décrit qui est connecté : { id, nom, prenom, role, agence, region }.
+// role === 'admin' correspond exactement à l'interface historique, inchangée.
+let CURRENT_USER = null;
+let _roleChoisi = null;
+
+const ROLE_LABELS = {
+  admin: 'Administrateur',
+  collecteur: 'Collecteur / Commercial',
+  gestionnaire_compte: 'Gestionnaire de compte membres',
+  gestionnaire_credit: 'Gestionnaire de crédit',
+  responsable_agence: "Responsable d'agence",
+  responsable_regional: 'Responsable régional'
+};
+
+function choisirRoleLogin(role){
+  _roleChoisi = role;
+  document.getElementById('loginRoleStep').style.display = 'none';
+  document.getElementById('loginCredStep').style.display = 'block';
+  document.getElementById('loginRoleLabel').textContent = ROLE_LABELS[role];
+  document.getElementById('loginIdInput').value = role==='admin' ? 'admin' : '';
+  document.getElementById('loginPinInput').value = '';
+  document.getElementById('loginGateErr').style.display = 'none';
+  document.getElementById(role==='admin' ? 'loginPinInput' : 'loginIdInput').focus();
+}
+
+async function validerLoginGate(){
+  const id = document.getElementById('loginIdInput').value.trim();
+  const pin = document.getElementById('loginPinInput').value.trim();
+  const errEl = document.getElementById('loginGateErr');
+  errEl.style.display = 'none';
+
+  if(!id || !pin){ errEl.textContent='Identifiant et PIN requis'; errEl.style.display='block'; return; }
+
+  // S'assurer que les données sont chargées avant de vérifier les identifiants
+  lsLoad();
+  try{ await pullAll(); }catch(e){}
+
+  if(_roleChoisi === 'admin'){
+    const stored = localStorage.getItem('nfs_admin_pin') || ADMIN_PIN;
+    if(id !== 'admin' || pin !== stored){ errEl.textContent='Identifiants incorrects'; errEl.style.display='block'; return; }
+    CURRENT_USER = { id:'admin', nom:'Administrateur', prenom:'', role:'admin', agence:'', region:'' };
+    entrerDansApp();
+    return;
+  }
+
+  if(_roleChoisi === 'collecteur'){
+    const com = S.commerciaux.find(c=>c.id===id);
+    if(!com || String(com.pin)!==pin){ errEl.textContent='Identifiants incorrects'; errEl.style.display='block'; return; }
+    if(com.statut!=='actif'){ errEl.textContent='Ce compte est suspendu'; errEl.style.display='block'; return; }
+    CURRENT_USER = { id:com.id, nom:com.nom, prenom:com.prenom, role:'collecteur', agence:com.agence||'', region:'' };
+    if(com.pinAChanger===true || com.pinAChanger==='true'){ ouvrirForceRolePinChange('nfs_commerciaux', com); return; }
+    entrerDansApp();
+    return;
+  }
+
+  // Rôles de supervision/back-office : gestionnaire_compte, gestionnaire_credit, responsable_agence, responsable_regional
+  const usr = S.utilisateurs.find(u=>u.id===id && u.role===_roleChoisi);
+  if(!usr || String(usr.pin)!==pin){ errEl.textContent='Identifiants incorrects'; errEl.style.display='block'; return; }
+  if(usr.statut!=='actif'){ errEl.textContent='Ce compte est suspendu'; errEl.style.display='block'; return; }
+  CURRENT_USER = { id:usr.id, nom:usr.nom, prenom:usr.prenom, role:usr.role, agence:usr.agence||'', region:usr.region||'' };
+  if(usr.pinAChanger===true || usr.pinAChanger==='true'){ ouvrirForceRolePinChange('nfs_utilisateurs', usr); return; }
+  entrerDansApp();
+}
+
+let _forceRolePinTable = null;
+let _forceRolePinRecord = null;
+function ouvrirForceRolePinChange(table, record){
+  _forceRolePinTable = table;
+  _forceRolePinRecord = record;
+  document.getElementById('roleForcePinNouv').value = '';
+  document.getElementById('roleForcePinConf').value = '';
+  document.getElementById('roleForcePinErr').style.display = 'none';
+  document.getElementById('forceRolePinModal').classList.add('open');
+}
+
+async function validerForceRolePinChange(){
+  const nouv = document.getElementById('roleForcePinNouv').value.trim();
+  const conf = document.getElementById('roleForcePinConf').value.trim();
+  const err = document.getElementById('roleForcePinErr');
+  if(nouv.length<4 || !/^\d+$/.test(nouv)){ err.textContent='PIN invalide (au moins 4 chiffres)'; err.style.display='block'; return; }
+  if(nouv!==conf){ err.textContent='Les PIN ne correspondent pas'; err.style.display='block'; return; }
+
+  _forceRolePinRecord.pin = nouv;
+  _forceRolePinRecord.pinAChanger = false;
+  lsSave();
+  try{ await gasPostWithResponse({ action:'upsert', table:_forceRolePinTable, row:_forceRolePinRecord }); }catch(e){}
+
+  document.getElementById('forceRolePinModal').classList.remove('open');
+  toast('PIN défini avec succès','ok');
+  entrerDansApp();
+}
+
+function deconnecterUtilisateur(){
+  CURRENT_USER = null;
+  document.getElementById('appRoot').style.display = 'none';
+  document.getElementById('loginGateScreen').style.display = 'flex';
+  document.getElementById('loginRoleStep').style.display = 'block';
+  document.getElementById('loginCredStep').style.display = 'none';
+}
+
+function entrerDansApp(){
+  document.getElementById('loginGateScreen').style.display = 'none';
+  document.getElementById('appRoot').style.display = 'block';
+  document.getElementById('topRoleBadge').textContent = ROLE_LABELS[CURRENT_USER.role].toUpperCase();
+  construireNavPourRole();
+  const premierePagePourRole = {
+    admin:'dashboard', collecteur:'dashboard_collecteur', gestionnaire_compte:'dashboard_gcm',
+    gestionnaire_credit:'dashboard_gcr', responsable_agence:'dashboard_agence', responsable_regional:'dashboard_regional'
+  };
+  nav(premierePagePourRole[CURRENT_USER.role] || 'dashboard');
+}
+
+// ── NAVIGATION DYNAMIQUE PAR RÔLE ────────────────────────────────────
+// role==='admin' conserve EXACTEMENT le menu historique. Les autres rôles ont
+// un sous-ensemble de sections adapté à leurs responsabilités (cf. prompts).
+const ROLE_NAV_CONFIG = {
+  admin: [
+    {sec:'Principal', items:[['dashboard','📊','Tableau de bord'],['membres','👥','Membres']]},
+    {sec:'Opérations', items:[['depots','📥','Dépôts / Retraits','badge-depots'],['virements','↔️','Virements'],['credits','💳','Crédits'],['cep','🎯','Épargne Projet']]},
+    {sec:'Administration', items:[['demandes','✍️',"Demandes adhésion",'badge-demandes'],['media','📸','Pièces jointes'],['agences','🏢','Agences'],['commerciaux','🚶','Commerciaux'],['utilisateurs','🔑','Utilisateurs'],['rapports','📈','Rapports']]}
+  ],
+  collecteur: [
+    {sec:'Ma journée', items:[['dashboard_collecteur','📊','Tableau de bord du jour']]},
+    {sec:'Mon activité', items:[['mon_portefeuille','👥','Mon portefeuille'],['mes_demandes_credit','✍️',"Mes demandes"]]}
+  ],
+  gestionnaire_compte: [
+    {sec:'Principal', items:[['dashboard_gcm','📊','Tableau de bord']]},
+    {sec:'Membres & guichet', items:[['membres','👥','Membres'],['depots','📥','Dépôts / Retraits','badge-depots'],['demandes','✍️',"Demandes adhésion",'badge-demandes']]},
+    {sec:'Contrôle', items:[['commerciaux','🚶','Remises collecteurs'],['media','📸','Pièces jointes']]},
+    {sec:'Suivi', items:[['rapports','📈','Rapports']]}
+  ],
+  gestionnaire_credit: [
+    {sec:'Principal', items:[['dashboard_gcr','📊','Tableau de bord crédit']]},
+    {sec:'Crédit', items:[['credits','💳','Crédits'],['recouvrement','⚠️','Recouvrement']]},
+    {sec:'Suivi', items:[['rapports','📈','Rapports']]}
+  ],
+  responsable_agence: [
+    {sec:'Principal', items:[['dashboard_agence','📊','Tableau de bord agence']]},
+    {sec:'Pilotage', items:[['commerciaux','🚶','Équipe'],['membres','👥','Membres'],['depots','📥','Validations','badge-depots'],['credits','💳','Crédits']]},
+    {sec:'Suivi', items:[['rapports','📈','Rapports']]}
+  ],
+  responsable_regional: [
+    {sec:'Principal', items:[['dashboard_regional','📊','Tableau de bord régional']]},
+    {sec:'Pilotage', items:[['agences','🏢','Agences'],['rapports','📈','Rapports consolidés']]}
+  ]
+};
+
+function construireNavPourRole(){
+  const config = ROLE_NAV_CONFIG[CURRENT_USER.role] || ROLE_NAV_CONFIG.admin;
+  const nav = document.getElementById('navItemsContainer');
+  let html = '';
+  config.forEach(section=>{
+    html += `<div class="nav-sec">${section.sec}</div>`;
+    section.items.forEach(([page,icon,label,badgeId])=>{
+      html += `<div class="nav-item" onclick="nav('${page}')" id="nav-${page}"><span>${icon}</span>${label}${badgeId?`<span class="nav-badge" id="${badgeId}" style="display:none">0</span>`:''}</div>`;
+    });
+  });
+  nav.innerHTML = html;
+}
+
+// Filtre agence pour les rôles rattachés à une seule agence (gestionnaire_compte,
+// gestionnaire_credit, responsable_agence). L'admin et le responsable régional
+// voient tout ; le collecteur voit son propre portefeuille (géré ailleurs).
+function membresVisibles(){
+  if(!CURRENT_USER || CURRENT_USER.role==='admin' || CURRENT_USER.role==='responsable_regional') return S.membres;
+  if(!CURRENT_USER.agence) return S.membres;
+  return S.membres.filter(m=>m.agence===CURRENT_USER.agence);
+}
+function commerciauxVisibles(){
+  if(!CURRENT_USER || CURRENT_USER.role==='admin' || CURRENT_USER.role==='responsable_regional') return S.commerciaux;
+  if(!CURRENT_USER.agence) return S.commerciaux;
+  return S.commerciaux.filter(c=>c.agence===CURRENT_USER.agence);
+}
+function creditsVisibles(){
+  if(!CURRENT_USER || CURRENT_USER.role==='admin' || CURRENT_USER.role==='responsable_regional') return S.credits;
+  const idsAgence = new Set(membresVisibles().map(m=>m.id));
+  return S.credits.filter(c=>idsAgence.has(c.membreId));
+}
 
 // Version du logiciel — incrémentée à chaque correction structurelle des données
 // pour forcer une purge ponctuelle du cache local lors de la prochaine ouverture.
@@ -572,6 +804,7 @@ function lsLoad(){
   S.transactions=dedupeById(JSON.parse(localStorage.getItem('nfs_transactions')||'[]'), 'id');
   S.credits=dedupeById(JSON.parse(localStorage.getItem('nfs_credits')||'[]'), 'id');
   S.cep=dedupeById(JSON.parse(localStorage.getItem('nfs_cep')||'[]'), 'id');
+  S.utilisateurs=dedupeById(JSON.parse(localStorage.getItem('nfs_utilisateurs')||'[]'), 'id');
   S.agences=JSON.parse(localStorage.getItem('nfs_agences')||'[]');
   S.demandes=dedupeById(JSON.parse(localStorage.getItem('nfs_demandes')||'[]'), 'ref');
   S.commerciaux=dedupeById(JSON.parse(localStorage.getItem('nfs_commerciaux')||'[]'), 'id');
@@ -588,6 +821,7 @@ function lsSave(){
   localStorage.setItem('nfs_transactions',JSON.stringify(S.transactions));
   localStorage.setItem('nfs_credits',JSON.stringify(S.credits));
   localStorage.setItem('nfs_cep',JSON.stringify(S.cep));
+  localStorage.setItem('nfs_utilisateurs',JSON.stringify(S.utilisateurs));
   localStorage.setItem('nfs_agences',JSON.stringify(S.agences));
   localStorage.setItem('nfs_demandes',JSON.stringify(S.demandes));
   localStorage.setItem('nfs_commerciaux',JSON.stringify(S.commerciaux));
@@ -627,6 +861,7 @@ async function pullAll(){
     gasPull('nfs_membres','nfs_membres'),
     gasPull('nfs_credits','nfs_credits'),
     gasPull('nfs_cep','nfs_cep'),
+    gasPull('nfs_utilisateurs','nfs_utilisateurs'),
     gasPull('nfs_demandes','nfs_demandes'),
     gasPull('nfs_agences','nfs_agences'),
     gasPull('nfs_commerciaux','nfs_commerciaux'),
@@ -745,17 +980,25 @@ function validateAdminPin(){
 
 // ── NAVIGATION ───────────────────────────────────────────────
 const PAGE_TITLES={dashboard:'Tableau de bord',membres:'Membres',depots:'Dépôts & Retraits',
-  virements:'Virements',credits:'Crédits',cep:'Épargne Projet',demandes:"Demandes d'adhésion",media:'Pièces jointes',agences:'Agences',commerciaux:'Commerciaux',rapports:'Rapports'};
+  virements:'Virements',credits:'Crédits',cep:'Épargne Projet',demandes:"Demandes d'adhésion",media:'Pièces jointes',agences:'Agences',commerciaux:'Commerciaux',utilisateurs:'Utilisateurs',rapports:'Rapports',
+  dashboard_collecteur:'Tableau de bord du jour', mon_portefeuille:'Mon portefeuille', mes_demandes_credit:'Mes demandes de crédit',
+  dashboard_gcm:'Tableau de bord', dashboard_gcr:'Tableau de bord crédit', recouvrement:'Recouvrement',
+  dashboard_agence:"Tableau de bord agence", dashboard_regional:'Tableau de bord régional'};
 let currentPage='dashboard';
 function nav(page){
   currentPage=page;
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  document.querySelector(`[onclick="nav('${page}')"]`).classList.add('active');
+  const navEl = document.querySelector(`[onclick="nav('${page}')"]`);
+  if(navEl) navEl.classList.add('active');
   document.getElementById('pageTitle').textContent=PAGE_TITLES[page]||page;
   const mpt = document.getElementById('mobilePageTitle');
   if(mpt) mpt.textContent = PAGE_TITLES[page]||page;
   ({dashboard:renderDash,membres:renderMembres,depots:renderDepots,virements:renderVirements,
-    credits:renderCredits,cep:renderCEP,demandes:renderDemandes,media:renderMedia,agences:renderAgences,commerciaux:renderCommerciaux,rapports:renderRapports})[page]?.();
+    credits:renderCredits,cep:renderCEP,demandes:renderDemandes,media:renderMedia,agences:renderAgences,commerciaux:renderCommerciaux,utilisateurs:renderUtilisateurs,rapports:renderRapports,
+    dashboard_collecteur:renderDashboardCollecteur, mon_portefeuille:renderMonPortefeuille, mes_demandes_credit:renderMesDemandesCredit,
+    dashboard_gcm:renderDashboardGCM, dashboard_gcr:renderDashboardGCR, recouvrement:renderRecouvrement,
+    dashboard_agence:renderDashboardAgence, dashboard_regional:renderDashboardRegional
+  })[page]?.();
   setTimeout(autoLabelTables, 30);
   closeMobileMenu();
 }
@@ -1064,7 +1307,8 @@ function rejeterTx(id){
 
 // ── MEMBRES ──────────────────────────────────────────────────
 function renderMembres(filter=''){
-  const list=filter?S.membres.filter(m=>(m.nom+m.prenom+m.tel+m.id).toLowerCase().includes(filter.toLowerCase())):S.membres;
+  const base = membresVisibles();
+  const list=filter?base.filter(m=>(m.nom+m.prenom+m.tel+m.id).toLowerCase().includes(filter.toLowerCase())):base;
   document.getElementById('content').innerHTML=`
   <div style="display:flex;gap:10px;margin-bottom:14px">
     <input class="fi" id="srch" placeholder="🔍 Nom, téléphone, ID…" value="${filter}" oninput="renderMembres(this.value)" style="flex:1">
@@ -1958,13 +2202,14 @@ function admClotureCEP(cepId, estAnticipe){
 }
 
 function renderCredits(){
-  const crAttente=S.credits.filter(c=>c.statut==='attente');
-  const crEnCours=S.credits.filter(c=>c.statut==='encours');
+  const creditsBase = creditsVisibles();
+  const crAttente=creditsBase.filter(c=>c.statut==='attente');
+  const crEnCours=creditsBase.filter(c=>c.statut==='encours');
   const crEnRetardActif=crEnCours.filter(c=>calculCredit(c).necessiteRecouvrement);
 
   document.getElementById('content').innerHTML=`
   <div class="tab-bar">
-    <div class="tab active" onclick="swTab3('crL',['crAtt','crEnC'],this)">Tous (${S.credits.length})</div>
+    <div class="tab active" onclick="swTab3('crL',['crAtt','crEnC'],this)">Tous (${creditsBase.length})</div>
     <div class="tab" onclick="swTab3('crAtt',['crL','crEnC'],this)">En attente d'étude (${crAttente.length})</div>
     <div class="tab" onclick="swTab3('crEnC',['crL','crAtt'],this)">Suivi en cours (${crEnCours.length})${crEnRetardActif.length?' ⚠️':''}</div>
   </div>
@@ -1987,7 +2232,7 @@ function renderCredits(){
     <div class="card"><div style="padding:0;overflow-x:auto">
       <table>
         <tr><th>ID</th><th>Membre</th><th>Historique membre</th><th>Montant</th><th>Durée</th><th>Objet</th><th>Garantie</th><th>Pièce jointe</th><th>Taux</th><th>Mensualité</th><th>Remboursé</th><th>Statut</th><th>Actions</th></tr>
-        ${renderLignesCredits(S.credits)}
+        ${renderLignesCredits(creditsBase)}
       </table>
     </div></div>
   </div>
@@ -2307,23 +2552,45 @@ function renderAgences(){
   document.getElementById('content').innerHTML=`
   <div style="margin-bottom:12px"><button class="btn btn-p" onclick="ajouterAgence()">+ Nouvelle agence</button></div>
   <div class="card"><div style="padding:0">
-    <table><tr><th>ID</th><th>Nom</th><th>Ville</th><th>Actions</th></tr>
-    ${S.agences.map(a=>`<tr><td class="fw7">${a.id}</td><td>${a.nom}</td><td>${a.ville}</td>
+    <table><tr><th>ID</th><th>Nom</th><th>Ville</th><th>Région</th><th>Actions</th></tr>
+    ${S.agences.map(a=>`<tr><td class="fw7">${a.id}</td><td>${a.nom}</td><td>${a.ville}</td><td>${a.region||'—'}</td>
       <td><button class="btn btn-d btn-sm" onclick="suppAgence('${a.id}')">✕</button></td></tr>`).join('')}
     </table>
   </div></div>`;
 }
-function ajouterAgence(){const nom=prompt('Nom agence :');if(!nom)return;const ville=prompt('Ville :')||'Douala';const id='AG'+String(S.agences.length+1).padStart(2,'0');const ag={id,nom,ville};S.agences.push(ag);lsSave();gasPush('nfs_agences',ag);toast("Agence créée — synchronisée avec l'app","ok");renderAgences();}
+function ajouterAgence(){const nom=prompt('Nom agence :');if(!nom)return;const ville=prompt('Ville :')||'Douala';const region=prompt('Région :')||'';const id='AG'+String(S.agences.length+1).padStart(2,'0');const ag={id,nom,ville,region};S.agences.push(ag);lsSave();gasPush('nfs_agences',ag);toast("Agence créée — synchronisée avec l'app","ok");renderAgences();}
 function suppAgence(id){if(!confirm('Supprimer ?'))return;S.agences=S.agences.filter(a=>a.id!==id);lsSave();renderAgences();}
 
 // ── COMMERCIAUX / COLLECTEURS TERRAIN ──────────────────────────
 let pfCurrentCommercialId=null;
 
+// ── RÉINITIALISATION DU PIN D'UN COMMERCIAL ──────────────────────────
+// Le PIN provisoire n'était visible qu'une seule fois, dans l'email envoyé
+// à la création du compte. Si ce PIN a été perdu (email non reçu, absent,
+// ou compte créé avant la mise en place de l'envoi automatique), il n'existait
+// jusqu'ici AUCUN moyen de le retrouver ou de le réinitialiser depuis le
+// logiciel admin — ce bouton corrige ce manque.
+function reinitialiserPinCommercial(id){
+  const com = S.commerciaux.find(c=>c.id===id);
+  if(!com) return;
+  requireAdminPin('Réinitialiser le PIN de '+com.nom+' '+com.prenom+' (PIN admin requis)', async ()=>{
+    const nouveauPin = String(Math.floor(1000 + Math.random()*9000));
+    com.pin = nouveauPin;
+    com.pinAChanger = true; // il devra en redéfinir un personnel à sa prochaine connexion
+    lsSave();
+    const resp = await gasPostWithResponse({ action:'upsert', table:'nfs_commerciaux', row: com });
+    if(!resp || !resp.ok){ toast('❌ Échec de la réinitialisation — vérifiez la connexion','err'); return; }
+    alert('Nouveau PIN pour '+com.nom+' '+com.prenom+' ('+com.id+') :\n\n'+nouveauPin+'\n\nCommuniquez-le-lui directement — il devra en définir un nouveau à sa prochaine connexion.');
+    renderCommerciaux();
+  });
+}
+
 function renderCommerciaux(){
+  const commerciauxBase = commerciauxVisibles();
   const enAttenteCredits = S.creditsCollecteurs.filter(c=>c.statut==='attente').length;
   document.getElementById('content').innerHTML=`
   <div class="tab-bar">
-    <div class="tab active" onclick="swTab('comListe','comCredits',this)">Commerciaux (${S.commerciaux.length})</div>
+    <div class="tab active" onclick="swTab('comListe','comCredits',this)">Commerciaux (${commerciauxBase.length})</div>
     <div class="tab" onclick="swTab('comCredits','comListe',this)">Crédits collecteurs (${enAttenteCredits})</div>
   </div>
   <div id="comListe" class="tab-c active">
@@ -2331,7 +2598,7 @@ function renderCommerciaux(){
     <div class="card"><div style="padding:0;overflow-x:auto">
       <table>
         <tr><th>ID</th><th>Nom</th><th>Téléphone</th><th>Zone</th><th>Agence</th><th>Solde personnel</th><th>Plafond caisse</th><th>Portefeuille</th><th>Statut</th><th>Actions</th></tr>
-        ${S.commerciaux.length?S.commerciaux.map(c=>{
+        ${commerciauxBase.length?commerciauxBase.map(c=>{
           const nbClients=S.portefeuilles.filter(p=>p.commercialId===c.id).length;
           return `<tr>
             <td class="fw7 fs11" style="color:var(--blue)">${c.id}</td>
@@ -2343,8 +2610,9 @@ function renderCommerciaux(){
             <td class="fw7">${fmt(c.plafondCaisse||0)}</td>
             <td><span class="badge" style="background:var(--blue)">${nbClients} client(s)</span></td>
             <td><span class="st st-${c.statut}">${c.statut}</span></td>
-            <td><div style="display:flex;gap:3px">
+            <td><div style="display:flex;gap:3px;flex-wrap:wrap">
               <button class="btn btn-p btn-sm" onclick="openPortefeuille('${c.id}')">👥 Portefeuille</button>
+              <button class="btn btn-o btn-sm" onclick="reinitialiserPinCommercial('${c.id}')">🔑 PIN</button>
               <button class="btn btn-d btn-sm" onclick="toggleCommercialStatut('${c.id}')">${c.statut==='actif'?'Suspendre':'Réactiver'}</button>
             </div></td>
           </tr>`;}).join(''):'<tr><td colspan="10" class="empty">Aucun commercial créé</td></tr>'}
@@ -2601,6 +2869,287 @@ function renderMedia(){
         </div>
       </div>`).join('') : '<div class="empty" style="grid-column:1/-1">Aucune pièce jointe dans cette catégorie</div>'}
   </div>`;
+}
+
+// ════════════════════════════════════════════════════════════════════
+// ÉCRANS PAR RÔLE — Prompts collecteur / gestionnaire compte / gestionnaire
+// crédit / responsable agence / responsable régional
+// ════════════════════════════════════════════════════════════════════
+
+// ── UTILISATEURS (admin uniquement) — création des comptes à rôle ──────
+function renderUtilisateurs(){
+  document.getElementById('content').innerHTML = `
+  <div style="margin-bottom:12px"><button class="btn btn-p" onclick="ouvrirCreationUtilisateur()">+ Nouveau compte</button></div>
+  <div class="card"><div style="padding:0;overflow-x:auto">
+    <table>
+      <tr><th>ID</th><th>Nom</th><th>Rôle</th><th>Agence</th><th>Région</th><th>Téléphone</th><th>Statut</th><th>Actions</th></tr>
+      ${S.utilisateurs.length ? S.utilisateurs.slice().reverse().map(u=>`
+        <tr>
+          <td class="fw7 fs11" style="color:var(--blue)">${u.id}</td>
+          <td>${u.nom} ${u.prenom}</td>
+          <td class="fs11">${ROLE_LABELS[u.role]||u.role}</td>
+          <td class="fs11">${u.agence||'—'}</td>
+          <td class="fs11">${u.region||'—'}</td>
+          <td class="fs11">${u.tel||'—'}</td>
+          <td><span class="st st-${u.statut}">${u.statut}</span></td>
+          <td><div style="display:flex;gap:3px">
+            <button class="btn btn-o btn-sm" onclick="reinitialiserPinUtilisateur('${u.id}')">🔑 PIN</button>
+            <button class="btn btn-d btn-sm" onclick="toggleUtilisateurStatut('${u.id}')">${u.statut==='actif'?'Suspendre':'Réactiver'}</button>
+          </div></td>
+        </tr>`).join('') : '<tr><td colspan="8" class="empty">Aucun compte créé</td></tr>'}
+    </table>
+  </div></div>`;
+}
+
+function ouvrirCreationUtilisateur(){
+  const nom = prompt('Nom :'); if(!nom) return;
+  const prenom = prompt('Prénom :')||'';
+  const roleChoisi = prompt('Rôle (gestionnaire_compte / gestionnaire_credit / responsable_agence / responsable_regional) :');
+  if(!roleChoisi || !ROLE_LABELS[roleChoisi] || roleChoisi==='admin' || roleChoisi==='collecteur'){
+    toast('Rôle invalide','err'); return;
+  }
+  const agence = (roleChoisi!=='responsable_regional') ? (prompt('Agence (ex: AG01) :')||'') : '';
+  const region = (roleChoisi==='responsable_regional') ? (prompt('Région :')||'') : '';
+  const tel = prompt('Téléphone :')||'';
+  const email = prompt('Email (optionnel, pour recevoir le PIN) :')||'';
+
+  requireAdminPin('Créer ce compte (PIN admin requis)', async ()=>{
+    const resp = await gasPostWithResponse({ action:'creerUtilisateurAuto', utilisateurData:{ nom, prenom, role:roleChoisi, agence, region, tel, email } });
+    if(!resp || !resp.ok || !resp.utilisateur){ toast('❌ Échec de la création — vérifiez la connexion','err'); return; }
+    const nouvel = { id:resp.utilisateur.id, nom, prenom, role:roleChoisi, agence, region, tel, email, pin:resp.utilisateur.pin, pinAChanger:true, statut:'actif' };
+    S.utilisateurs.push(nouvel);
+    lsSave();
+    alert('Compte créé : '+resp.utilisateur.id+'\n\nPIN provisoire : '+resp.utilisateur.pin+'\n\nÀ communiquer directement — il devra le changer à la première connexion.');
+    renderUtilisateurs();
+  });
+}
+
+function reinitialiserPinUtilisateur(id){
+  const u = S.utilisateurs.find(x=>x.id===id);
+  if(!u) return;
+  requireAdminPin('Réinitialiser le PIN de '+u.nom+' '+u.prenom+' (PIN admin requis)', async ()=>{
+    const nouveauPin = String(Math.floor(1000 + Math.random()*9000));
+    u.pin = nouveauPin; u.pinAChanger = true;
+    lsSave();
+    const resp = await gasPostWithResponse({ action:'upsert', table:'nfs_utilisateurs', row: u });
+    if(!resp || !resp.ok){ toast('❌ Échec — vérifiez la connexion','err'); return; }
+    alert('Nouveau PIN pour '+u.nom+' '+u.prenom+' :\n\n'+nouveauPin);
+    renderUtilisateurs();
+  });
+}
+
+function toggleUtilisateurStatut(id){
+  const u = S.utilisateurs.find(x=>x.id===id);
+  if(!u) return;
+  u.statut = u.statut==='actif' ? 'suspendu' : 'actif';
+  lsSave();
+  gasPush('nfs_utilisateurs', u);
+  toast('Statut mis à jour','ok');
+  renderUtilisateurs();
+}
+
+// ── COLLECTEUR (vue web complémentaire à l'app mobile) ─────────────────
+function renderDashboardCollecteur(){
+  const mesMembres = S.portefeuilles.filter(p=>p.commercialId===CURRENT_USER.id).map(p=>getMembre(p.membreId)).filter(Boolean);
+  const com = S.commerciaux.find(c=>c.id===CURRENT_USER.id);
+  document.getElementById('content').innerHTML = `
+  <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+    <div class="card" style="flex:1;min-width:150px"><div class="card-bd" style="text-align:center">
+      <div style="font-size:10px;color:var(--muted)">Membres dans mon portefeuille</div>
+      <div style="font-size:20px;font-weight:800;color:var(--navy)">${mesMembres.length}</div>
+    </div></div>
+    <div class="card" style="flex:1;min-width:150px"><div class="card-bd" style="text-align:center">
+      <div style="font-size:10px;color:var(--muted)">Mon solde de collecte</div>
+      <div style="font-size:20px;font-weight:800;color:var(--gold)">${fmt(com?.soldeCollecte||0)}</div>
+    </div></div>
+  </div>
+  <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:12px;font-size:12px;color:#1D4ED8">
+    ℹ️ L'encaissement des versements se fait depuis l'application mobile Collecteur. Cette vue web vous permet de suivre votre portefeuille et vos demandes.
+  </div>`;
+}
+
+function renderMonPortefeuille(){
+  const mesMembres = S.portefeuilles.filter(p=>p.commercialId===CURRENT_USER.id).map(p=>getMembre(p.membreId)).filter(Boolean);
+  document.getElementById('content').innerHTML = `
+  <div class="card"><div style="padding:0;overflow-x:auto">
+    <table>
+      <tr><th>ID</th><th>Nom</th><th>Téléphone</th><th>Solde EP</th><th>Solde CC</th><th>Statut</th></tr>
+      ${mesMembres.length ? mesMembres.map(m=>`
+        <tr><td class="fw7 fs11">${m.id}</td><td>${m.nom} ${m.prenom}</td><td class="fs11">${m.tel||'—'}</td>
+        <td class="fw7">${fmt(m.soldeEP||0)}</td><td class="fw7">${fmt(m.soldeCC||0)}</td>
+        <td><span class="st st-${m.statut}">${m.statut}</span></td></tr>`).join('') : '<tr><td colspan="6" class="empty">Aucun membre affecté</td></tr>'}
+    </table>
+  </div></div>`;
+}
+
+function renderMesDemandesCredit(){
+  const mesCredits = S.creditsCollecteurs.filter(c=>c.commercialId===CURRENT_USER.id).slice().reverse();
+  document.getElementById('content').innerHTML = `
+  <div class="card"><div style="padding:0;overflow-x:auto">
+    <table>
+      <tr><th>ID</th><th>Montant</th><th>Durée</th><th>Motif</th><th>Date</th><th>Statut</th></tr>
+      ${mesCredits.length ? mesCredits.map(c=>`
+        <tr><td class="fw7 fs11">${c.id||c.uuid.slice(0,8).toUpperCase()}</td><td class="fw7">${fmt(c.montant)}</td>
+        <td>${c.duree} mois</td><td class="fs11">${c.motif||'—'}</td><td class="fs11">${c.date||'—'}</td>
+        <td><span class="st st-${c.statut}">${c.statut}</span></td></tr>`).join('') : '<tr><td colspan="6" class="empty">Aucune demande</td></tr>'}
+    </table>
+  </div></div>`;
+}
+
+// ── GESTIONNAIRE DE COMPTE MEMBRES ───────────────────────────────────
+function renderDashboardGCM(){
+  const mesMembres = membresVisibles();
+  const demandesEnAttente = S.demandes.filter(d=>d.statut==='en_attente'||d.statut==='en_attente_sync').length;
+  const opsAujourdhui = S.transactions.filter(t=>t.date===isoDay() && mesMembres.some(m=>m.id===t.membreId)).length;
+  const opsEnAttente = S.transactions.filter(t=>t.statut==='attente' && mesMembres.some(m=>m.id===t.membreId)).length;
+  document.getElementById('content').innerHTML = `
+  <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+    <div class="card" style="flex:1;min-width:150px"><div class="card-bd" style="text-align:center">
+      <div style="font-size:10px;color:var(--muted)">Membres (mon agence)</div>
+      <div style="font-size:20px;font-weight:800;color:var(--navy)">${mesMembres.length}</div>
+    </div></div>
+    <div class="card" style="flex:1;min-width:150px"><div class="card-bd" style="text-align:center">
+      <div style="font-size:10px;color:var(--muted)">Demandes d'adhésion en attente</div>
+      <div style="font-size:20px;font-weight:800;color:var(--gold)">${demandesEnAttente}</div>
+    </div></div>
+    <div class="card" style="flex:1;min-width:150px"><div class="card-bd" style="text-align:center">
+      <div style="font-size:10px;color:var(--muted)">Opérations à traiter</div>
+      <div style="font-size:20px;font-weight:800;color:var(--red)">${opsEnAttente}</div>
+    </div></div>
+    <div class="card" style="flex:1;min-width:150px"><div class="card-bd" style="text-align:center">
+      <div style="font-size:10px;color:var(--muted)">Opérations aujourd'hui</div>
+      <div style="font-size:20px;font-weight:800;color:var(--green)">${opsAujourdhui}</div>
+    </div></div>
+  </div>
+  <div class="card"><div class="card-hd"><h3>Accès rapides</h3></div><div class="card-bd" style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn btn-p" onclick="nav('depots')">📥 Traiter les dépôts/retraits</button>
+    <button class="btn btn-p" onclick="nav('demandes')">✍️ Traiter les demandes d'adhésion</button>
+    <button class="btn btn-o" onclick="nav('membres')">👥 Voir les membres</button>
+  </div></div>`;
+}
+
+// ── GESTIONNAIRE DE CRÉDIT ────────────────────────────────────────────
+function renderDashboardGCR(){
+  const mesCredits = creditsVisibles();
+  const actifs = mesCredits.filter(c=>c.statut==='encours');
+  const encoursTotal = actifs.reduce((s,c)=>{ const k=calculCredit(c); return s+k.capitalRestant; },0);
+  const enInstruction = mesCredits.filter(c=>c.statut==='attente').length;
+  const enRetard = actifs.filter(c=>calculCredit(c).enRetard).length;
+  const parPct = actifs.length ? Math.round((enRetard/actifs.length)*100) : 0;
+  document.getElementById('content').innerHTML = `
+  <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+    <div class="card" style="flex:1;min-width:150px"><div class="card-bd" style="text-align:center">
+      <div style="font-size:10px;color:var(--muted)">Encours de crédit</div>
+      <div style="font-size:18px;font-weight:800;color:var(--navy)">${fmt(encoursTotal)}</div>
+    </div></div>
+    <div class="card" style="flex:1;min-width:150px"><div class="card-bd" style="text-align:center">
+      <div style="font-size:10px;color:var(--muted)">Crédits actifs</div>
+      <div style="font-size:20px;font-weight:800;color:var(--blue)">${actifs.length}</div>
+    </div></div>
+    <div class="card" style="flex:1;min-width:150px"><div class="card-bd" style="text-align:center">
+      <div style="font-size:10px;color:var(--muted)">PAR (portefeuille à risque)</div>
+      <div style="font-size:20px;font-weight:800;color:${parPct>10?'var(--red)':'var(--green)'}">${parPct}%</div>
+    </div></div>
+    <div class="card" style="flex:1;min-width:150px"><div class="card-bd" style="text-align:center">
+      <div style="font-size:10px;color:var(--muted)">Demandes en instruction</div>
+      <div style="font-size:20px;font-weight:800;color:var(--gold)">${enInstruction}</div>
+    </div></div>
+  </div>
+  <div class="card"><div class="card-hd"><h3>Accès rapides</h3></div><div class="card-bd" style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn btn-p" onclick="nav('credits')">💳 Instruire / suivre les crédits</button>
+    <button class="btn btn-o" onclick="nav('recouvrement')">⚠️ Recouvrement des impayés</button>
+  </div></div>`;
+}
+
+function renderRecouvrement(){
+  const mesCredits = creditsVisibles().filter(c=>c.statut==='encours');
+  const buckets = { '1-30':[], '31-60':[], '61-90':[], '90+':[] };
+  mesCredits.forEach(c=>{
+    const k = calculCredit(c);
+    if(!k.enRetard) return;
+    if(k.joursRetard<=30) buckets['1-30'].push({c,k});
+    else if(k.joursRetard<=60) buckets['31-60'].push({c,k});
+    else if(k.joursRetard<=90) buckets['61-90'].push({c,k});
+    else buckets['90+'].push({c,k});
+  });
+  document.getElementById('content').innerHTML = `
+  <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+    ${Object.keys(buckets).map(b=>`<div class="card" style="flex:1;min-width:120px"><div class="card-bd" style="text-align:center">
+      <div style="font-size:10px;color:var(--muted)">${b} jours</div>
+      <div style="font-size:20px;font-weight:800;color:${b==='90+'?'var(--red)':'var(--gold)'}">${buckets[b].length}</div>
+    </div></div>`).join('')}
+  </div>
+  <div class="card"><div style="padding:0;overflow-x:auto">
+    <table>
+      <tr><th>Crédit</th><th>Membre</th><th>Montant impayé</th><th>Jours de retard</th><th>Tranche</th></tr>
+      ${Object.keys(buckets).flatMap(b=>buckets[b].map(({c,k})=>{
+        const m = getMembre(c.membreId);
+        return `<tr><td class="fw7 fs11">${c.id}</td><td>${m?m.nom+' '+m.prenom:c.membreId}</td>
+        <td class="fw7" style="color:var(--red)">${fmt(k.montantImpaye)}</td><td>${k.joursRetard} j</td><td>${b}</td></tr>`;
+      })).join('') || '<tr><td colspan="5" class="empty">Aucun crédit en retard 🎉</td></tr>'}
+    </table>
+  </div></div>`;
+}
+
+// ── RESPONSABLE D'AGENCE ──────────────────────────────────────────────
+function renderDashboardAgence(){
+  const mesMembres = membresVisibles();
+  const mesCommerciaux = commerciauxVisibles();
+  const mesCredits = creditsVisibles().filter(c=>c.statut==='encours');
+  const encoursEpargne = mesMembres.reduce((s,m)=>s+(parseFloat(m.soldeEP)||0),0);
+  const encoursCredit = mesCredits.reduce((s,c)=>{ const k=calculCredit(c); return s+k.capitalRestant; },0);
+  const collecteJour = S.transactions.filter(t=>t.date===isoDay() && t.type==='DEPOT' && mesMembres.some(m=>m.id===t.membreId)).reduce((s,t)=>s+(parseFloat(t.montant)||0),0);
+  document.getElementById('content').innerHTML = `
+  <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+    <div class="card" style="flex:1;min-width:150px"><div class="card-bd" style="text-align:center"><div style="font-size:10px;color:var(--muted)">Membres actifs</div><div style="font-size:20px;font-weight:800;color:var(--navy)">${mesMembres.filter(m=>m.statut==='actif').length}</div></div></div>
+    <div class="card" style="flex:1;min-width:150px"><div class="card-bd" style="text-align:center"><div style="font-size:10px;color:var(--muted)">Encours Épargne</div><div style="font-size:16px;font-weight:800;color:var(--blue)">${fmt(encoursEpargne)}</div></div></div>
+    <div class="card" style="flex:1;min-width:150px"><div class="card-bd" style="text-align:center"><div style="font-size:10px;color:var(--muted)">Encours Crédit</div><div style="font-size:16px;font-weight:800;color:var(--gold)">${fmt(encoursCredit)}</div></div></div>
+    <div class="card" style="flex:1;min-width:150px"><div class="card-bd" style="text-align:center"><div style="font-size:10px;color:var(--muted)">Collecte du jour</div><div style="font-size:16px;font-weight:800;color:var(--green)">${fmt(collecteJour)}</div></div></div>
+  </div>
+  <div class="card"><div class="card-hd"><h3>Équipe (${mesCommerciaux.length} collecteurs)</h3></div><div style="padding:0;overflow-x:auto">
+    <table>
+      <tr><th>Collecteur</th><th>Téléphone</th><th>Solde personnel</th><th>Portefeuille</th><th>Statut</th></tr>
+      ${mesCommerciaux.length ? mesCommerciaux.map(c=>{
+        const nb = S.portefeuilles.filter(p=>p.commercialId===c.id).length;
+        return `<tr><td class="fw7">${c.nom} ${c.prenom}</td><td class="fs11">${c.tel||'—'}</td><td class="fw7">${fmt(c.soldeCollecte||0)}</td><td>${nb} client(s)</td><td><span class="st st-${c.statut}">${c.statut}</span></td></tr>`;
+      }).join('') : '<tr><td colspan="5" class="empty">Aucun collecteur</td></tr>'}
+    </table>
+  </div></div>`;
+}
+
+// ── RESPONSABLE RÉGIONAL ──────────────────────────────────────────────
+function renderDashboardRegional(){
+  const mesAgences = CURRENT_USER.region ? S.agences.filter(a=>a.region===CURRENT_USER.region) : S.agences;
+  const lignes = mesAgences.map(a=>{
+    const membresAgence = S.membres.filter(m=>m.agence===a.id);
+    const creditsAgence = S.credits.filter(c=>c.statut==='encours' && membresAgence.some(m=>m.id===c.membreId));
+    const commerciauxAgence = S.commerciaux.filter(c=>c.agence===a.id);
+    const encoursEpargne = membresAgence.reduce((s,m)=>s+(parseFloat(m.soldeEP)||0),0);
+    const encoursCredit = creditsAgence.reduce((s,c)=>{ const k=calculCredit(c); return s+k.capitalRestant; },0);
+    const enRetard = creditsAgence.filter(c=>calculCredit(c).enRetard).length;
+    const par = creditsAgence.length ? Math.round((enRetard/creditsAgence.length)*100) : 0;
+    return { agence:a, nbMembres:membresAgence.length, nbCommerciaux:commerciauxAgence.length, encoursEpargne, encoursCredit, par };
+  });
+  const totalEpargne = lignes.reduce((s,l)=>s+l.encoursEpargne,0);
+  const totalCredit = lignes.reduce((s,l)=>s+l.encoursCredit,0);
+  const totalMembres = lignes.reduce((s,l)=>s+l.nbMembres,0);
+
+  document.getElementById('content').innerHTML = `
+  <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+    <div class="card" style="flex:1;min-width:150px"><div class="card-bd" style="text-align:center"><div style="font-size:10px;color:var(--muted)">Agences</div><div style="font-size:20px;font-weight:800;color:var(--navy)">${lignes.length}</div></div></div>
+    <div class="card" style="flex:1;min-width:150px"><div class="card-bd" style="text-align:center"><div style="font-size:10px;color:var(--muted)">Membres (région)</div><div style="font-size:20px;font-weight:800;color:var(--blue)">${totalMembres}</div></div></div>
+    <div class="card" style="flex:1;min-width:150px"><div class="card-bd" style="text-align:center"><div style="font-size:10px;color:var(--muted)">Encours Épargne</div><div style="font-size:16px;font-weight:800;color:var(--green)">${fmt(totalEpargne)}</div></div></div>
+    <div class="card" style="flex:1;min-width:150px"><div class="card-bd" style="text-align:center"><div style="font-size:10px;color:var(--muted)">Encours Crédit</div><div style="font-size:16px;font-weight:800;color:var(--gold)">${fmt(totalCredit)}</div></div></div>
+  </div>
+  <div class="card"><div class="card-hd"><h3>Comparatif inter-agences</h3></div><div style="padding:0;overflow-x:auto">
+    <table>
+      <tr><th>Agence</th><th>Ville</th><th>Membres</th><th>Collecteurs</th><th>Encours Épargne</th><th>Encours Crédit</th><th>PAR</th></tr>
+      ${lignes.length ? lignes.map(l=>`
+        <tr><td class="fw7">${l.agence.nom}</td><td class="fs11">${l.agence.ville||'—'}</td><td>${l.nbMembres}</td><td>${l.nbCommerciaux}</td>
+        <td class="fw7">${fmt(l.encoursEpargne)}</td><td class="fw7">${fmt(l.encoursCredit)}</td>
+        <td><span style="font-weight:700;color:${l.par>10?'var(--red)':'var(--green)'}">${l.par}%</span></td></tr>`).join('') : '<tr><td colspan="7" class="empty">Aucune agence</td></tr>'}
+    </table>
+  </div></div>`;
 }
 
 function renderRapports(){
