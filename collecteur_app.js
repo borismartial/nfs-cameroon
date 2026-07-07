@@ -406,11 +406,49 @@ async function chargerPortefeuille(){
         .map(a => membresMap[a.membreId])
         .filter(Boolean);
 
+      // ── IMPORTANT : fusionner plutôt que remplacer intégralement ──────────
+      // Google Sheets/Apps Script n'est pas toujours immédiatement cohérent :
+      // juste après qu'un admin affecte un nouveau client, une lecture qui
+      // arrive quelques secondes plus tard peut encore renvoyer l'ANCIEN état
+      // (sans ce client). Avant, ce code effaçait TOUT le cache local et le
+      // remplaçait par cette lecture — donc si elle était périmée, un client
+      // fraîchement affecté disparaissait de l'app du collecteur au lieu d'y
+      // apparaître. On fusionne maintenant : tout nouveau client vu dans la
+      // lecture est ajouté/mis à jour immédiatement (jamais de retard côté
+      // ajout), et un client absent de la lecture n'est retiré du cache local
+      // que si on l'a vu absent lors d'un rafraîchissement précédent — donc
+      // un retrait réel prend un peu plus de temps à se propager, mais un
+      // ajout ne se perd plus jamais à cause d'une lecture momentanément périmée.
+      const idsNouveaux = new Set(nouveauPortefeuille.map(m => m.id));
+      const idsAbsentsPrecedemment = window._portefeuilleAbsentsVus || new Set();
+      const idsActuellementAbsents = new Set(portefeuille.map(m=>m.id).filter(id=>!idsNouveaux.has(id)));
+
+      const fusion = [...nouveauPortefeuille];
+      portefeuille.forEach(m=>{
+        if(idsNouveaux.has(m.id)) return; // déjà dans la nouvelle liste
+        if(idsAbsentsPrecedemment.has(m.id)){
+          // Absent deux fois de suite : on considère le retrait confirmé, on ne le réinjecte pas
+          return;
+        }
+        // Première fois qu'il semble absent : on le garde encore ce cycle-ci par précaution
+        fusion.push(m);
+      });
+      window._portefeuilleAbsentsVus = idsActuellementAbsents;
+
       await idbClear('portefeuille');
-      for (const m of nouveauPortefeuille) {
-        await idbPut('portefeuille', m);
+      for (const m of fusion) {
+        // ── CORRECTIF IMPORTANT ────────────────────────────────────────────
+        // Le magasin IndexedDB "portefeuille" utilise "membreId" comme clé
+        // (keyPath), mais les fiches membres utilisent "id" comme identifiant
+        // — elles n'ont jamais eu de champ "membreId". Stocker l'objet membre
+        // tel quel faisait donc échouer idbPut() sur CHAQUE membre (la clé
+        // était introuvable), et comme idbClear() venait de vider le magasin
+        // juste avant, le portefeuille entier restait vide en permanence —
+        // y compris les clients déjà là depuis longtemps. On ajoute donc
+        // explicitement ce champ avant l'enregistrement.
+        await idbPut('portefeuille', Object.assign({}, m, { membreId: m.id }));
       }
-      portefeuille = nouveauPortefeuille;
+      portefeuille = fusion;
     }
   }
 }
@@ -865,9 +903,14 @@ async function confirmerCollecte(){
     // indépendamment de la disponibilité du réseau
     await ajouterCollecteLocale(collecte);
 
-    // Mettre à jour le solde local du membre dans le portefeuille en cache
+    // Mettre à jour le solde local du membre dans le portefeuille en cache.
+    // Même correctif que dans chargerPortefeuille() : le magasin IndexedDB
+    // "portefeuille" attend un champ "membreId" comme clé, absent des fiches
+    // membres (qui utilisent "id"). Sans ce champ ajouté explicitement,
+    // idbPut() échouait silencieusement et le solde local n'était jamais
+    // réellement mis à jour dans le cache.
     m.soldeEP = soldeApres;
-    await idbPut('portefeuille', m);
+    await idbPut('portefeuille', Object.assign({}, m, { membreId: m.id }));
 
     lastCollecteResult = { collecte, membre: m };
 
